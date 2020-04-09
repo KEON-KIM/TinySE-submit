@@ -56,7 +56,6 @@ public class TokenizerTest {
 			for (int i = 0; i < testSentences.size(); i++) {
 				List<String> arr = obj.split(testSentences.get(i));
 				assertNotNull(arr);
- 
 				assertEquals(arr.size(), results.get(i).length);
 				for (int cnt = 0; cnt < arr.size(); cnt++) {
 					assertTrue(results.get(i)[cnt].equals(arr.get(cnt)));
