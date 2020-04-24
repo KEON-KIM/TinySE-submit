@@ -2,9 +2,12 @@ package edu.hanyang.submit;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
@@ -46,6 +49,16 @@ public class TinySEExternalSort implements ExternalSort {
 				new BufferedOutputStream(
 						new FileOutputStream(outfile), blocksize));
 		
+		File file = new File(infile);
+		int len = (int)file.length();
+		
+		try {
+			for(int i = 0; i < len; i++) {
+				os.write(is.readByte());
+			}
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
 		
 		
 		
@@ -63,6 +76,23 @@ public class TinySEExternalSort implements ExternalSort {
 		//M-1개의 runs를 머지한(0~M-2,M-1~2(M-1)-1) 
 		//다하면 call externalmergesort
 		//pass의 갯수 log_(M-1)^N
+	}
+	public static void main(String[] args) throws FileNotFoundException {
+		String infile = "/Users/gkalstn/4-1/TinySE-submit/src/test/resources/test.data";
+		DataInputStream is = new DataInputStream(
+				new BufferedInputStream(
+						new FileInputStream(infile), 4096));
+		
+		File file = new File(infile);
+		int len = (int)file.length();
+		try {
+			for (int i = 0; i < len; i++) {
+				System.out.println(is.read());
+				System.out.println("-----------");
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 }
