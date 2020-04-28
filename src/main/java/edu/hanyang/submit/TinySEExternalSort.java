@@ -2,10 +2,12 @@ package edu.hanyang.submit;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
@@ -90,6 +92,33 @@ public class TinySEExternalSort implements ExternalSort {
 		//5. M-1 개의 runs block들 에서 가장첫번째 요소 비교후 가장큰 block을 output buffer에 저장 
 		//6. if outbuffer 꽉차면 재일앞에꺼 push to disk and memory 비우기 
 		
+<<<<<<< HEAD
+=======
+		// infile i/o 열기, blocksize 만큼씩
+		DataInputStream is = new DataInputStream(
+				new BufferedInputStream(
+						new FileInputStream(infile), blocksize));
+		
+		// 최종 저장될 outfile
+		DataOutputStream os = new DataOutputStream(
+				new BufferedOutputStream(
+						new FileOutputStream(outfile), blocksize));
+		
+		File file = new File(infile);
+		int len = (int)file.length();
+		
+		try {
+			for(int i = 0; i < len; i++) {
+				os.write(is.readByte());
+			}
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+		
+		
+		
+		
+>>>>>>> refs/remotes/origin/master
 	}
 	public void merge(int i, int j) { //인자는 run, priority queue 써서 각 run cur 제일 우선순위 output mem, 모든 input buffer merge될때까지 반복
 		 
@@ -103,6 +132,23 @@ public class TinySEExternalSort implements ExternalSort {
 		//M-1개의 runs를 머지한(0~M-2,M-1~2(M-1)-1) 
 		//다하면 call externalmergesort
 		//pass의 갯수 log_(M-1)^N
+	}
+	public static void main(String[] args) throws FileNotFoundException {
+		String infile = "/Users/gkalstn/4-1/TinySE-submit/src/test/resources/test.data";
+		DataInputStream is = new DataInputStream(
+				new BufferedInputStream(
+						new FileInputStream(infile), 4096));
+		
+		File file = new File(infile);
+		int len = (int)file.length();
+		try {
+			for (int i = 0; i < len; i++) {
+				System.out.println(is.read());
+				System.out.println("-----------");
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 }
