@@ -23,17 +23,14 @@ import edu.hanyang.indexer.ExternalSort;
 public class TinySEExternalSort implements ExternalSort {
 	
 	
-	/*
+	
 	public static void copyDataStream() throws IOException{ 
 		
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
-					new FileInputStream("./test.data"), 1024)
+					new FileInputStream("./tmp/run0.data"), 1024)
 				);
-		DataOutputStream os = new DataOutputStream(
-				new BufferedOutputStream(
-					new FileOutputStream("./testcopy.data"), 1024)
-				);	
+		
 		//List<String> results = new List<String>();
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>();
 
@@ -72,30 +69,60 @@ public class TinySEExternalSort implements ExternalSort {
 //			
 //		}
 	}
-	*/
-
+	
+	
+	public static void make_run_file(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, DataOutputStream os) throws IOException {
+		for(MutableTriple<Integer, Integer, Integer> tmp : dataArr) {
+			os.writeInt(tmp.getLeft());			
+			os.writeInt(tmp.getMiddle());
+			os.writeInt(tmp.getRight());
+		}
+	}
+	public static void init_run() {
+		
+	}
 	public static void main(String[] args) throws IOException {
+//		copyDataStream();
+		
+		
+		
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
 					new FileInputStream("./test.data"), 1024)
 				);
+		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(1024);
 		
-		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>();
 		
-		DataManager dm = new DataManager(is);
-		MutableTriple<Integer, Integer, Integer> ret = dm.tuple;
-		dataArr.add(ret);
+		int run = 0;
 		try {
-			while(!dm.isEOF) {
+			
+			while(true) {
+				DataManager dm = new DataManager(is);
+				MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
 				dm.getTuple(ret);
 				dataArr.add(ret);
+				
+				if((dataArr.size() == 1024 ) || (dm.isEOF == true)) {
+					DataOutputStream os = new DataOutputStream(
+							new BufferedOutputStream(
+									new FileOutputStream("./tmpt/run"+run+".data")));
+					//sorting dataArr
+					//make_run_file(String tmpdir, dataArr, DataOutputStream os);
+					make_run_file(dataArr, os);
+					dataArr.clear();
+//					System.out.println(dataArr);
+					run++;
+				}
+				
+				
 			}
-			System.out.println(dataArr.size());
+			
 		}	
 		catch (IOException e) {
 			System.out.println(e);
-			System.out.println(dataArr.size());
 		}
+		
+		
 		
 	}
 	
@@ -193,6 +220,7 @@ class DataManager {
 		
 		isEOF = (! this.readNext());
 	}
+	
 }
 
 class QuickSorter {
