@@ -21,6 +21,9 @@ import org.apache.commons.lang3.tuple.MutableTriple;
 import edu.hanyang.indexer.ExternalSort;
 
 public class TinySEExternalSort implements ExternalSort {
+	
+	
+	/*
 	public static void copyDataStream() throws IOException{ 
 		
 		DataInputStream is = new DataInputStream(
@@ -39,21 +42,29 @@ public class TinySEExternalSort implements ExternalSort {
 		int cnt = 0;
 //		DataManager manager = new DataManager(is);
 //		dataArr.add(manager.tuple);
-
+		
+		
 		try {
+			
 			for (int i = 0; i< len; i++) {
 				DataManager manager = new DataManager(is);
 				dataArr.add(manager.tuple);
 				System.out.println(dataArr.get(i));
-				cnt++;
 				
-			}		
+				cnt++;
+			
+			}
+			
+			DataManager dm = new DataManager(is);
+			MutableTriple<Integer, Integer, Integer> ret = null;
+			dm.getTuple(ret);
+			System.out.println(ret);
+			
 			
 		}
 		catch (Exception e) {
 			System.out.println("counting : "+cnt);		
 		}
-		
 	
 		//String tmpDir = "./test.data";
 		//File[] fileArr = (new File(tmpDir+File.separator + String.valueOf(prevStep))).listFiles();
@@ -61,11 +72,31 @@ public class TinySEExternalSort implements ExternalSort {
 //			
 //		}
 	}
+	*/
 
 	public static void main(String[] args) throws IOException {
-		System.out.println("Starts");
-		copyDataStream();
-		System.out.println("Clear");
+		DataInputStream is = new DataInputStream(
+				new BufferedInputStream(
+					new FileInputStream("./test.data"), 1024)
+				);
+		
+		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>();
+		
+		DataManager dm = new DataManager(is);
+		MutableTriple<Integer, Integer, Integer> ret = dm.tuple;
+		dataArr.add(ret);
+		try {
+			while(!dm.isEOF) {
+				dm.getTuple(ret);
+				dataArr.add(ret);
+			}
+			System.out.println(dataArr.size());
+		}	
+		catch (IOException e) {
+			System.out.println(e);
+			System.out.println(dataArr.size());
+		}
+		
 	}
 	
 	//output buffer 변수 만드는거 전역변수
@@ -133,27 +164,34 @@ public class TinySEExternalSort implements ExternalSort {
 class DataManager {
 	public boolean isEOF = false;
 	private DataInputStream dis = null;
-	public MutableTriple<Integer,Integer,Integer> tuple = new MutableTriple<Integer,Integer,Integer>(0,0,0);
+	public MutableTriple<Integer,Integer,Integer> tuple = null;
+	
 	public DataManager(DataInputStream dis) throws IOException{
 //		System.out.println("DataManager : 1"+dis);
-		readNext(dis);
+		this.dis = dis;
+		this.tuple = new MutableTriple<Integer,Integer,Integer>(dis.readInt(),dis.readInt(),dis.readInt());
+//		readNext(dis); 
 	};
 
-	private boolean readNext(DataInputStream dis) throws IOException {
+	private boolean readNext() throws IOException {
 		if(isEOF) return false;
 //		System.out.println("DataManager : 4"+dis);
-		tuple.setLeft(dis.readInt()); tuple.setMiddle(dis.readInt()); tuple.setRight(dis.readInt());
+		tuple.setLeft(dis.readInt()); 
+		tuple.setMiddle(dis.readInt()); 
+		tuple.setRight(dis.readInt());
 //		System.out.println("DataManager : 5"+dis);
 		return true;
 	}
 	
-	public void getTuple(MutableTriple<Integer,Integer,Integer> ret,DataInputStream dis) throws IOException{
+	public void getTuple(MutableTriple<Integer,Integer,Integer> ret) throws IOException{
 //		System.out.println("DataManager : 2"+dis);
-		ret.setLeft(tuple.getLeft());ret.setMiddle(tuple.getMiddle()); ret.setRight(tuple.getRight());
+		ret.setLeft(tuple.getLeft());
+		ret.setMiddle(tuple.getMiddle()); 
+		ret.setRight(tuple.getRight());
 //		System.out.println(ret);
 //		System.out.println("DataManager : 3"+dis);
 		
-		isEOF = (! readNext(dis));
+		isEOF = (! this.readNext());
 	}
 }
 
