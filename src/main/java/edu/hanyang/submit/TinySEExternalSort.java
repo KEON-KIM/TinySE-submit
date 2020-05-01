@@ -11,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
@@ -22,75 +23,26 @@ import edu.hanyang.indexer.ExternalSort;
 
 public class TinySEExternalSort implements ExternalSort {
 	
-	
-	
-	public static void copyDataStream() throws IOException{ 
-		
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream("./tmp/run0.data"), 1024)
-				);
-		
-		//List<String> results = new List<String>();
-		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>();
-
-		File file = new File("./test.data");
-		int len = (int)file.length();
-		int cnt = 0;
-//		DataManager manager = new DataManager(is);
-//		dataArr.add(manager.tuple);
-		
-		
-		try {
-			
-			for (int i = 0; i< len; i++) {
-				DataManager manager = new DataManager(is);
-				dataArr.add(manager.tuple);
-				System.out.println(dataArr.get(i));
-				
-				cnt++;
-			
-			}
-			
-			DataManager dm = new DataManager(is);
-			MutableTriple<Integer, Integer, Integer> ret = null;
-			dm.getTuple(ret);
-			System.out.println(ret);
-			
-			
-		}
-		catch (Exception e) {
-			System.out.println("counting : "+cnt);		
-		}
-	
-		//String tmpDir = "./test.data";
-		//File[] fileArr = (new File(tmpDir+File.separator + String.valueOf(prevStep))).listFiles();
-//		for (int i = 0; i< len-1; i++) {
-//			
-//		}
-	}
-	
-	
 	public static void make_run_file(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, DataOutputStream os) throws IOException {
 		for(MutableTriple<Integer, Integer, Integer> tmp : dataArr) {
 			os.writeInt(tmp.getLeft());			
 			os.writeInt(tmp.getMiddle());
 			os.writeInt(tmp.getRight());
+			os.flush();
 		}
 	}
-	public static void init_run() {
+	
+	public static void init_run(String infile, 
+								String tmpdir,
+								int blocksize,
+								int nblocks) throws IOException {
 		
-	}
-	public static void main(String[] args) throws IOException {
-//		copyDataStream();
-		
-		
-		
+		int nElement = (blocksize*nblocks) / 12;
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
-					new FileInputStream("./test.data"), 1024)
+					new FileInputStream(infile), blocksize)
 				);
-		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(1024);
+		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		
 		
 		int run = 0;
@@ -102,26 +54,26 @@ public class TinySEExternalSort implements ExternalSort {
 				dm.getTuple(ret);
 				dataArr.add(ret);
 				
-				if((dataArr.size() == 1024 ) || (dm.isEOF == true)) {
+				if((dataArr.size() == nElement ) || (dm.isEOF == true)) {
 					DataOutputStream os = new DataOutputStream(
 							new BufferedOutputStream(
-									new FileOutputStream("./tmpt/run"+run+".data")));
+									new FileOutputStream("./tmpt/run0"+run+".data")));
 					//sorting dataArr
+					Collections.sort(dataArr);
 					//make_run_file(String tmpdir, dataArr, DataOutputStream os);
 					make_run_file(dataArr, os);
 					dataArr.clear();
 //					System.out.println(dataArr);
 					run++;
-				}
-				
-				
-			}
-			
+				}	
+			}		
 		}	
 		catch (IOException e) {
 			System.out.println(e);
-		}
+		}	
 		
+	}
+	public static void main(String[] args) throws IOException {
 		
 		
 	}
@@ -134,61 +86,13 @@ public class TinySEExternalSort implements ExternalSort {
 									// creating intermediate runs
 					int blocksize, //4096 or 8192 bytes
 					int nblocks) throws IOException { // available mem, block size, M
-		// complete the method
-		
-		// 1. initial phase
-		// ArrayList<MutableTriple<Integer,Integer,Integer>> dataArr = new ArrayList<>();
-		// 2. n_way merge
-		// _externalMergeSort(tmpdir,outfile,0);
-		
-		
-		//1. infile i/o 열기
-		//   (term, docID, pos)로 구성
-		//2. infile의 내용을 최대한 읽을수있을만큼 많이 읽어들여서 quicksort 써서 정렬하고 run에 저장
-		//3. 각 run에서 M-1개씩 한꺼번에 merge
-		//4. output buffer memory준비(Memory one block)
-		//5. M-1 개의 runs block들 에서 가장첫번째 요소 비교후 가장큰 block을 output buffer에 저장 
-		//6. if outbuffer 꽉차면 재일앞에꺼 push to disk and memory 비우기 
-		
 
-		// infile i/o 열기, blocksize 만큼씩
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-						new FileInputStream(infile), blocksize));
-		
-		// 최종 저장될 outfile
-		DataOutputStream os = new DataOutputStream(
-				new BufferedOutputStream(
-						new FileOutputStream(outfile), blocksize));
-		
-		File file = new File(infile);
-		int len = (int)file.length();
-		
-		try {
-			for(int i = 0; i < len; i++) {
-				os.write(is.readByte());
-			}
-		}catch(IOException e) {
-			e.printStackTrace();
-		}
+		init_run(infile, tmpdir, blocksize, nblocks);
 
-	}
-	public void merge(int i, int j) { //인자는 run, priority queue 써서 각 run cur 제일 우선순위 output mem, 모든 input buffer merge될때까지 반복
-		 
-	}
-	
-	public void externalmergesort(int Paze) {
-		//현재 merge 해야하는 runs의 갯수(N)가 M-1보다 작은지 check
-		//if N < M-1 
-		// 작거나 같으면 이번 페이즈가 끝이므로 call merge()
-		//if N>= M 페이즈 수가 많다
-		//M-1개의 runs를 머지한(0~M-2,M-1~2(M-1)-1) 
-		//다하면 call externalmergesort
-		//pass의 갯수 log_(M-1)^N
 	}
 	
 }
-class DataManager {
+class DataManager implements Comparable<DataManager>{
 	public boolean isEOF = false;
 	private DataInputStream dis = null;
 	public MutableTriple<Integer,Integer,Integer> tuple = null;
@@ -219,6 +123,24 @@ class DataManager {
 //		System.out.println("DataManager : 3"+dis);
 		
 		isEOF = (! this.readNext());
+	}
+	@Override
+	public int compareTo(DataManager dm) {
+		MutableTriple<Integer,Integer,Integer> tuple1 = this.tuple;
+		MutableTriple<Integer,Integer,Integer> tuple2 = dm.tuple;
+		
+		if (tuple1.getLeft() < tuple2.getLeft()) return -1;
+		else if (tuple1.getLeft() > tuple2.getLeft()) return 1;
+		else {
+			if(tuple1.getMiddle() < tuple2.getMiddle()) return -1;
+			else if(tuple2.getMiddle() > tuple2.getMiddle()) return 1;
+			else {
+				if(tuple1.getRight() < tuple2.getRight()) return -1;
+				else if(tuple1.getRight() > tuple2.getRight()) return 1;
+				else return 0;
+			}
+		}
+		
 	}
 	
 }
