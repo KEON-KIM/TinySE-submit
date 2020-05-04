@@ -25,31 +25,7 @@ import edu.hanyang.indexer.ExternalSort;
 
 public class TinySEExternalSort implements ExternalSort {
 	int prevStep = 0;
-	int step = this.prevStep + 1;
-	String infile;
-	String outfile;
-	String tmpdir;
-	int blocksize;
-	int nblocks;
-	
-	public TinySEExternalSort(String infile,
-							String outfile,
-							String tmpdir,
-							int blocksize,
-							int nblocks) {
-		this.infile = infile;
-		this.outfile = outfile;
-		this.tmpdir = tmpdir;
-		this.blocksize = blocksize;
-		this.nblocks = nblocks;
-	}
-	public TinySEExternalSort() {
-		this.infile = null;
-		this.outfile = null;
-		this.tmpdir = null;
-		blocksize = 0;
-		nblocks = 0;
-	}
+	static int step = 1;
 	
 	
 	public static void make_run_file(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, DataOutputStream os) throws IOException {
@@ -60,8 +36,9 @@ public class TinySEExternalSort implements ExternalSort {
 			os.flush();
 		}
 	}
-	public static String make_dir(String tmdir, int paze) {
-		String path = tmdir+File.separator+String.valueOf(paze);
+	
+	public static String make_dir(String tmdir, int step) {
+		String path = tmdir+File.separator+String.valueOf(step);
 		File Folder = new File(path);
 		
 		if (!Folder.exists()) {
@@ -73,7 +50,11 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		return path;
 	}
-	
+	public static DataOutputStream open_output_stream(String path, int run, int blocksize) throws IOException {
+		return new DataOutputStream(
+				new BufferedOutputStream(
+						new FileOutputStream(path+File.separator+run+".data"), blocksize));
+	}
 	public static void init_run(String infile, 
 								String tmpdir,
 								int blocksize,
@@ -86,7 +67,6 @@ public class TinySEExternalSort implements ExternalSort {
 				);
 		
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
-		boolean isEOF = false;
 		DataManager dm = new DataManager(is);
 		int run = 0;
 		int paze = 0;
@@ -99,12 +79,10 @@ public class TinySEExternalSort implements ExternalSort {
 				dm.getTuple(ret);
 				dataArr.add(ret);
 				if((dataArr.size() == nElement ) || dm.isEOF) {
-					DataOutputStream os = new DataOutputStream(
-							new BufferedOutputStream(
-									new FileOutputStream(path+File.separator+run+".data")));
+					DataOutputStream os = open_output_stream(path, run, blocksize);
 					//sorting dataArr
 					Collections.sort(dataArr);
-					System.out.println(dataArr);
+//					System.out.println(dataArr);
 					//make_run_file(String tmpdir, dataArr, DataOutputStream os);
 					make_run_file(dataArr, os);
 					dataArr.clear();
@@ -115,68 +93,112 @@ public class TinySEExternalSort implements ExternalSort {
 			}		
 		}	
 		catch (IOException e) {
-			System.out.println(e);
+			System.out.println("init_run done");
 		}	
 		
 	}
 	public static void main(String[] args) throws IOException {
-		/*
+		
 		String infile = "./test.data";
-		String outfile = "./result.data";
+		String outfile = "./result/";
 		String tmpdir = "./tmpt/";
 		int blocksize = 4096;
-		int nblocks = 6;
+		int nblocks = 10;
 		init_run(infile, tmpdir, blocksize, nblocks);
-		*/
 		
 		
-		String tmpDir = "./tmpt";
-		int prevStep = 0;
-		File[] fileArr = (new File(tmpDir + File.separator + String.valueOf(prevStep))).listFiles();
-		System.out.println(fileArr.length);
-		System.out.println(tmpDir + File.separator + String.valueOf(prevStep));
-		System.out.println(fileArr[1].getAbsolutePath());
-        
+		TinySEExternalSort ts = new TinySEExternalSort();
+		
+		
+		int run = 0;
+		ts._externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
+		System.out.println("prevstep:"+ts.prevStep+", step : "+ts.step);
+		//다되면 step 업데이트
+		
+		
+		
+		
+		
 	}
-	public void n_way_merge(List<DataInputStream> files, String outfile) throws IOException {
+	public void n_way_merge(List<DataInputStream> files, String tmpdir, int run, int step, int blocksize) throws IOException {
 		PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size(), new Comparator<DataManager>() {
 			public int compare(DataManager o1, DataManager o2) {
 				return o1.tuple.compareTo(o2.tuple);
 			}
 		});
+		//outbuffer에 들어갈 ArrayList
+		ArrayList<MutableTriple<Integer, Integer, Integer>> bufferArr = new ArrayList<>(blocksize);
+		
+		//현재 step의 폴더를 생성
+		String path = make_dir(tmpdir, step);
+		
+		DataManager[] dmArr = new DataManager[files.size()];
+		int i = 0;
+		//files의 is를 pq에 연결시키기.
+		
+		for(DataInputStream dis : files) {
+			dmArr[i] = new DataManager(dis);
+			pq.offer(dmArr[i]);
+			i++;
+		}
+		DataOutputStream os = open_output_stream(path, run, blocksize);
+		//queue가 빌때까지 poll을하며 새로운 runfile을 만든다.
 		while(pq.size() != 0) {
-			DataManager dm = pq.poll();
-			MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
-			dm.getTuple(tmp);
-			//...
+			try {
+				DataManager dm = pq.poll();
+				MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
+				dm.getTuple(tmp);
+				bufferArr.add(tmp);
+//				System.out.println(bufferArr);
+			
+				if(bufferArr.size() == blocksize) {
+					make_run_file(bufferArr, os);
+					bufferArr.clear();
+				}
+				pq.add(dm);
+			} catch(IOException e) {}
 			
 		}
+		//다되면 step 업데이트
 		
 	}
-	public void _externalMergeSort(String tmpDir, String outfile, int step) throws IOException {
-		File[] fileArr = (new File(tmpDir + File.separator + String.valueOf(this.prevStep))).listFiles();
-		int cnt = 0;
-		if (fileArr.length <= nblocks - 1) {
-			for(File f : fileArr) {
-				/*
-				DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-						new FileInputStream(f.getAbsolutePath(), blocksize)
-					);
-				*/
-			}
-		}
-		else {
-			for(File f : fileArr) {
-				/*
-				 ...
-				 cnt++;
-				 if(cnt == nblocks -1) {
-				 	n_way_merge(...);
-				 }
-				*/
-			}
+	
+	public void _externalMergeSort(String tmpdir, String outfile, int step, int nblocks, int blocksize) throws IOException {
+		try {
+			File[] fileArr = (new File(tmpdir + File.separator + String.valueOf(this.prevStep))).listFiles();
+			int run = 0;
+			List<DataInputStream> files = new ArrayList<>();
 			
+			if (fileArr.length <= nblocks - 1) {
+				for(File f : fileArr) {
+					files.add(new DataInputStream(
+							new BufferedInputStream(
+									new FileInputStream(f), blocksize)
+							));
+				}
+				n_way_merge(files, tmpdir, run, step, blocksize);
+			}
+			else {
+				int cnt = 0;
+				for(File f : fileArr) {
+					files.add(new DataInputStream(
+							new BufferedInputStream(
+									new FileInputStream(f), blocksize)
+							));
+					if(cnt == nblocks) {
+						n_way_merge(files, tmpdir, run, step, blocksize);
+						run++;
+						cnt = -1;
+						files.clear();
+					}
+					cnt++;
+				}
+				prevStep++; step++;
+				_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
+			
+			}
+		} catch(IOException e) {
+			System.out.println(e);
 		}
 	}
 	//output buffer 변수 만드는거 전역변수
@@ -190,7 +212,7 @@ public class TinySEExternalSort implements ExternalSort {
 
 		init_run(infile, tmpdir, blocksize, nblocks);
 		
-		_externalMergeSort(tmpdir, outfile, step);
+		_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
 
 	}
 	
