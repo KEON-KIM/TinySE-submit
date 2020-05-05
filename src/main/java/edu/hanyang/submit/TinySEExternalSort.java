@@ -132,14 +132,14 @@ public class TinySEExternalSort implements ExternalSort {
 		String tmpdir = "./tmp/";
 		int blocksize = 1024;
 		int nblocks = 1000;
- 		ReadFileByte(outfile, blocksize);
-//		long timestamp = System.currentTimeMillis();
-//		init_run(infile, tmpdir, blocksize, nblocks);
-//		_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
-//		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
-//		TinySEExternalSort ts = new TinySEExternalSort();		
-//		ts._externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
-//		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
+		String chc = "./tmp/0/10.data";
+ 		ReadFileByte(chc, blocksize);
+		/*
+		long timestamp = System.currentTimeMillis();
+		init_run(infile, tmpdir, blocksize, nblocks);
+		_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
+		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
+		*/
 
 	}
 	public static void ReadFileByte(String outfile, int blocksize) {
