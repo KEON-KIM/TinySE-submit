@@ -123,36 +123,6 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		
 	}
-	public static void main(String[] args) throws IOException {
-		
-		
-		String infile = "./test.data";
-		String outfile = "./tmp/sorted.data";
-		String outfile1 = "./tmp/0/11.data";
-		String tmpdir = "./tmp/";
-		int blocksize = 1024;
-		int nblocks = 1000;
-<<<<<<< HEAD
-		String chc = "./tmp/0/10.data";
- 		ReadFileByte(chc, blocksize);
-		/*
-		long timestamp = System.currentTimeMillis();
-		init_run(infile, tmpdir, blocksize, nblocks);
-		_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
-		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
-		*/
-=======
-// 		ReadFileByte(outfile1, blocksize);
-		long timestamp = System.currentTimeMillis();
-		init_run(infile, tmpdir, blocksize, nblocks);
-		_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
-//		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
-//		TinySEExternalSort ts = new TinySEExternalSort();		
-//		ts._externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
-		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
->>>>>>> 42a6944a903b44958998d42a526d3da34e5a1dfb
-
-	}
 	public static void ReadFileByte(String outfile, int blocksize) {
 		int count=0;
 		try {
