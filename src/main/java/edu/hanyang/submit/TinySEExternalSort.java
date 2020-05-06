@@ -1,3 +1,4 @@
+
 package edu.hanyang.submit;
 
 import java.io.BufferedInputStream;
@@ -36,7 +37,7 @@ public class TinySEExternalSort implements ExternalSort {
 
 			init_run(infile, tmpdir, blocksize, nblocks);
 
-			_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
+			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 
 	}
 	public static void write_run_file(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, DataOutputStream os) throws IOException {
@@ -87,8 +88,7 @@ public class TinySEExternalSort implements ExternalSort {
 		make_tmp(tmpdir);
 		
 		int run = 0;
-		int paze = 0;
-		String path = make_dir(tmpdir, paze);
+		String path = make_dir(tmpdir, 0);
 		int nElement = (blocksize*nblocks) / 12;
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
@@ -117,12 +117,34 @@ public class TinySEExternalSort implements ExternalSort {
 			Collections.sort(dataArr);
 			write_run_file(dataArr, os);
 			dataArr.clear();
+			dm = null;
 			os.close();
 			is.close();
 		}	
 		
 		
 	}
+	
+	public static void main(String[] args) throws IOException {
+		
+		
+		String infile = "./test.data";
+		String outfile = "./tmp/sorted.data";
+		String outfile1 = "./tmp/0/11.data";
+		String tmpdir = "./tmp/";
+		int blocksize = 1024;
+		int nblocks = 10;
+		String chc = "./tmp/0/116.data";
+
+		long timestamp = System.currentTimeMillis();
+		init_run(infile, tmpdir, blocksize, nblocks);
+		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
+		System.out.println("time duration: " + (System.currentTimeMillis() - timestamp) + " msecs with " + nblocks + " blocks of size " + blocksize + " bytes");
+
+		
+		ReadFileByte(chc, blocksize);
+	}
+	
 	public static void ReadFileByte(String outfile, int blocksize) {
 		int count=0;
 		try {
@@ -143,25 +165,25 @@ public class TinySEExternalSort implements ExternalSort {
 			
 		}
 	}
+	
+	
 	public static void n_way_merge(List<DataInputStream> files, String tmpdir, int run, int step, int blocksize) throws IOException {
 		
-		PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size()-1, new Comparator<DataManager>() {
+		PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size(), new Comparator<DataManager>() {
 			public int compare(DataManager o1, DataManager o2) {
 				return o1.tuple.compareTo(o2.tuple);
 			}
 		});
 		
-		ArrayList<MutableTriple<Integer, Integer, Integer>> bufferArr = new ArrayList<>(blocksize);
+//		ArrayList<MutableTriple<Integer, Integer, Integer>> bufferArr = new ArrayList<>(blocksize);
 		
 		String path = make_dir(tmpdir, step);
 		
-		DataManager[] dmArr = new DataManager[files.size()];
-		int i = 0;
 		
 		for(DataInputStream dis : files) {
-			dmArr[i] = new DataManager(dis);
-			pq.offer(dmArr[i]);
-			i++;
+			DataManager dm = new DataManager(dis);
+			pq.offer(dm);
+			
 		}
 		DataOutputStream os;
 		
@@ -179,11 +201,11 @@ public class TinySEExternalSort implements ExternalSort {
 				DataManager dm = pq.poll();
 				MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
 				dm.getTuple(tmp);
-				bufferArr.add(tmp);
-				if(bufferArr.size() == blocksize) {
-					write_run_file(bufferArr, os);
-					bufferArr.clear();
-				}
+				
+				os.writeInt(tmp.left);
+				os.writeInt(tmp.middle);
+				os.writeInt(tmp.right);
+				
 				if(dm.isEOF) {
 					continue;
 				}
@@ -191,14 +213,15 @@ public class TinySEExternalSort implements ExternalSort {
 			} catch(IOException e) {}
 			
 		}
-		write_run_file(bufferArr, os);
-		bufferArr.clear();
+		pq.clear();
+//		write_run_file(bufferArr, os);
+//		bufferArr.clear();
 		os.close();
 		files.clear();
 		
 	}
 	
-	public static void _externalMergeSort(String tmpdir, String outfile, int step, int nblocks, int blocksize) throws IOException {		
+	public static void _externalMergeSort(String tmpdir, String outfile, int nblocks, int blocksize) throws IOException {		
 		File[] fileArr = (new File(tmpdir + File.separator + String.valueOf(prevStep))).listFiles();
 		List<DataInputStream> files = new ArrayList<>();
 		int run = 0;
@@ -213,6 +236,10 @@ public class TinySEExternalSort implements ExternalSort {
 			}
 			n_way_merge(files, outfile, run, step, blocksize);
 			fileArr = null;
+			for(DataInputStream dis : files) {
+				dis.close();
+			}
+			files.clear();
 		}
 		else {
 			int cnt = 0;
@@ -231,8 +258,12 @@ public class TinySEExternalSort implements ExternalSort {
 				
 			}
 			n_way_merge(files, tmpdir, run, step, blocksize);
+			for(DataInputStream dis : files) {
+				dis.close();
+			}
+			files.clear();
 			prevStep++; step++;
-			_externalMergeSort(tmpdir, outfile, step, nblocks, blocksize);
+			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 		} 
 	}
 }
@@ -242,31 +273,24 @@ class DataManager implements Comparable<DataManager>{
 	public MutableTriple<Integer,Integer,Integer> tuple = null;
 	
 	public DataManager(DataInputStream dis) throws IOException{
-//		System.out.println("DataManager : 1"+dis);
 		this.dis = dis;
 		this.tuple = new MutableTriple<Integer,Integer,Integer>(dis.readInt(),dis.readInt(),dis.readInt());
-//		readNext(dis); 
 	};
 
 	private boolean readNext() throws IOException {
 		if(isEOF) return false;
-//		System.out.println("DataManager : 4"+dis);
-		tuple.setLeft(this.dis.readInt()); 
-		tuple.setMiddle(this.dis.readInt()); 
-		tuple.setRight(this.dis.readInt());
-//		System.out.println("DataManager : 5"+dis);
+		this.tuple.setLeft(this.dis.readInt()); 
+		this.tuple.setMiddle(this.dis.readInt()); 
+		this.tuple.setRight(this.dis.readInt());
 		return true;
 	}
 	
 	public void getTuple(MutableTriple<Integer,Integer,Integer> ret) throws IOException{
-//		System.out.println("DataManager : 2"+dis);
-		ret.setLeft(tuple.getLeft());
-		ret.setMiddle(tuple.getMiddle()); 
-		ret.setRight(tuple.getRight());
-//		System.out.println(ret);
-//		System.out.println("DataManager : 3"+dis);
+		ret.setLeft(this.tuple.getLeft());
+		ret.setMiddle(this.tuple.getMiddle()); 
+		ret.setRight(this.tuple.getRight());
 		
-		isEOF = (! this.readNext());
+		this.isEOF = (! this.readNext());
 	}
 	@Override
 	public int compareTo(DataManager dm) {
@@ -288,3 +312,180 @@ class DataManager implements Comparable<DataManager>{
 	}
 	
 }
+
+/*
+package edu.hanyang.submit;
+
+import java.io.IOException;
+
+import edu.hanyang.indexer.ExternalSort;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+
+import org.apache.commons.lang3.tuple.MutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
+import java.io.File;
+
+public class TinySEExternalSort implements ExternalSort {
+	
+	public void sort(String infile, String outfile, String tmpdir, int blocksize, int nblocks) throws IOException {
+		
+		class Tuple{
+			int index,word_id,doc_id,pos;
+			public Tuple(int index, int word_id, int doc_id, int pos){
+				this.index = index;
+				this.word_id = word_id;
+				this.doc_id = doc_id;
+				this.pos = pos;
+			}
+		}
+		
+		class TripleSort implements Comparator<Triple<Integer,Integer,Integer>> {
+			@Override 
+			public int compare(Triple<Integer,Integer,Integer> a, Triple<Integer,Integer,Integer> b) { 
+				if(a.getLeft() > b.getLeft()) return 1;
+				else if(a.getLeft() < b.getLeft()) return -1;
+				else{
+					if(a.getMiddle() > b.getMiddle()) return 1;
+					else if(a.getMiddle() < b.getMiddle()) return -1;
+					else{
+						if(a.getRight() > b.getRight()) return 1;
+						else return -1;
+					}
+				} 
+			} 
+		}
+		class TupleSort implements Comparator<Tuple> {
+			@Override 
+			public int compare(Tuple a, Tuple b) { 
+				if(a.word_id > b.word_id) return 1;
+				else if(a.word_id < b.word_id) return -1;
+				else{
+					if(a.doc_id > b.doc_id) return 1;
+					else if(a.doc_id < b.doc_id) return -1;
+					else{
+						if(a.pos > b.pos) return 1;
+						else return -1;
+					}
+				} 
+			} 
+		}
+		
+		File dir = new File(tmpdir);
+		if(!dir.exists()){
+			dir.mkdirs();
+		}
+		DataInputStream input = new DataInputStream(new BufferedInputStream(new FileInputStream(infile),blocksize));
+		DataOutputStream run_writer;
+		ArrayList<MutableTriple<Integer, Integer, Integer>> runs = new ArrayList<MutableTriple<Integer, Integer, Integer>>();
+		int records = blocksize / ((Integer.SIZE/Byte.SIZE) * 3);
+		int word_id, doc_id, pos;
+		int run_cnt = 1;
+		int run = records * 3 * (Integer.SIZE/Byte.SIZE) * nblocks; // 한 run의 용량
+		int pass_cnt = 1;
+		while(input.available() != 0){
+			if( input.available() > run ) {
+				while (runs.size() < nblocks * records){
+					word_id = input.readInt();
+					doc_id = input.readInt();
+					pos = input.readInt();
+					runs.add(MutableTriple.of(word_id,doc_id,pos));
+				}
+			} else {
+				while (input.available() != 0){
+					word_id = input.readInt();
+					doc_id = input.readInt();
+					pos = input.readInt();
+					runs.add(MutableTriple.of(word_id,doc_id,pos));
+				}
+			}
+			Collections.sort(runs, new TripleSort());
+			run_writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tmpdir+"/run_"+pass_cnt+"_"+run_cnt+".data"),blocksize));
+			for(Triple<Integer,Integer,Integer> tuple : runs){
+				run_writer.writeInt(tuple.getLeft());
+				run_writer.writeInt(tuple.getMiddle());
+				run_writer.writeInt(tuple.getRight());
+			}
+			run_writer.close();
+			run_cnt++;
+			runs.clear();
+		}
+		run_cnt--;
+		input.close();
+		// create run 완료
+		// merge pass 시작
+		ArrayList<Tuple> tuples = new ArrayList<Tuple>();
+		ArrayList<DataInputStream> run_reads = new ArrayList<DataInputStream>();
+		DataOutputStream output = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(outfile),blocksize));
+		Tuple tuple;
+		int index;
+		while(true){
+			int pre_runs = run_cnt;
+			int cur_runs = pre_runs/nblocks;
+			if(cur_runs*nblocks < pre_runs) cur_runs++;
+			pass_cnt++;
+			run_cnt = 1;
+			int run_num = 1;
+			int iter;
+			for(int i=1; i<=cur_runs; i++){
+				run_reads.clear();
+				tuples.clear();
+				if(pre_runs > nblocks){
+					iter = nblocks;
+					pre_runs -= nblocks;
+				}
+				else iter = pre_runs;
+				for(int j=0; j<iter; j++){
+					DataInputStream run_read = new DataInputStream(new BufferedInputStream(new FileInputStream(tmpdir+"/run_"+(pass_cnt-1)+"_"+run_num+".data"),blocksize));
+					run_reads.add(run_read);
+					run_num++;
+				}
+				if(cur_runs == 1) run_writer = output;
+				else run_writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tmpdir+"/run_"+pass_cnt+"_"+run_cnt+".data"),blocksize));
+				for(int j=0; j<iter; j++){
+					word_id = run_reads.get(j).readInt();
+					doc_id = run_reads.get(j).readInt();
+					pos = run_reads.get(j).readInt();
+					tuple = new Tuple(j,word_id,doc_id,pos);
+					tuples.add(tuple);
+				}
+				while(true){
+					Collections.sort(tuples, new TupleSort());
+					tuple = tuples.get(0);
+					index = tuple.index;
+					run_writer.writeInt(tuple.word_id);
+					run_writer.writeInt(tuple.doc_id);
+					run_writer.writeInt(tuple.pos);
+					tuples.remove(0);
+					if(run_reads.get(index).available() > 0){
+						word_id = run_reads.get(index).readInt();
+						doc_id = run_reads.get(index).readInt();
+						pos = run_reads.get(index).readInt();
+						tuple = new Tuple(index,word_id,doc_id,pos);
+						tuples.add(tuple);
+						
+					}
+					if(tuples.isEmpty()) break;
+				}
+				run_cnt++;
+				run_writer.close();
+			}
+			if(run_cnt == 2){
+				break;
+			}
+			else{
+				run_cnt--;
+			}
+		}
+//		merge pass 완료
+		output.close();
+	}
+}
+*/
