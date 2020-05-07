@@ -100,6 +100,15 @@ public class TinySEExternalSort implements ExternalSort {
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		DataManager dm = new DataManager(is);
 		DataOutputStream os;
+		int left; int middle; int right;
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		while(!dm.isEOF) {
 			MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
@@ -108,7 +117,14 @@ public class TinySEExternalSort implements ExternalSort {
 			dataArr.add(ret);
 			if((dataArr.size() == nElement )) {
 				os = open_output_stream(path, run, blocksize);
-				Collections.sort(dataArr);
+				Collections.sort(dataArr, new TupleSort());
+				/*
+				 * PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size(), new Comparator<DataManager>() {
+					public int compare(DataManager o1, DataManager o2) {
+						return o1.tuple.compareTo(o2.tuple);
+						}
+						});
+						*/
 				write_run_file(dataArr, os);
 				dataArr.clear();
 				os.close();
@@ -118,13 +134,15 @@ public class TinySEExternalSort implements ExternalSort {
 			
 		}	
 		os = open_output_stream(path, run, blocksize);
-		Collections.sort(dataArr);
+		Collections.sort(dataArr, new TupleSort());
 		write_run_file(dataArr, os);
 		dataArr.clear();
 		dm = null;
 		os.close();
 		is.close();	
+		
 	}
+	
 	
 	public static void main(String[] args) throws IOException {
 		
@@ -324,3 +342,22 @@ class DataManager implements Comparable<DataManager>{
 	}
 	
 }
+class TupleSort implements Comparator<MutableTriple<Integer,Integer,Integer>> {
+	@Override
+	public int compare(MutableTriple<Integer,Integer,Integer> a, MutableTriple<Integer,Integer,Integer> b) {
+		if(a.left > b.left) return 1;
+		else if(a.left < b.left) return -1;
+		else{
+			if(a.middle > b.middle) return 1;
+			else if(a.middle < b.middle) return -1;
+			else{
+				if(a.right > b.right) return 1;
+				else return -1;
+			}
+		}
+	}
+}
+
+
+
+

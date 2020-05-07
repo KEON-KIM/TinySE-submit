@@ -74,52 +74,6 @@ public class ExternalSortTest {
 		}
 	}
 }
-/*
-File dir = new File(tmpdir);
-if(!dir.exists()){
-	dir.mkdirs();
-}
-
-DataInputStream input = new DataInputStream(new BufferedInputStream(new FileInputStream(infile),blocksize));
-DataOutputStream run_writer;
-ArrayList<MutableTriple<Integer, Integer, Integer>> runs = new ArrayList<MutableTriple<Integer, Integer, Integer>>();
-int records = blocksize / ((Integer.SIZE/Byte.SIZE) * 3);
-int word_id, doc_id, pos;
-int run_cnt = 1;
-int run = records * 3 * (Integer.SIZE/Byte.SIZE) * nblocks; // 한 run의 용량
-int pass_cnt = 1;
-while(input.available() != 0){
-	if( input.available() > run ) {
-		while (runs.size() < nblocks * records){
-			word_id = input.readInt();
-			doc_id = input.readInt();
-			pos = input.readInt();
-			runs.add(MutableTriple.of(word_id,doc_id,pos));
-		}
-	} else {
-		while (input.available() != 0){
-			word_id = input.readInt();
-			doc_id = input.readInt();
-			pos = input.readInt();
-			runs.add(MutableTriple.of(word_id,doc_id,pos));
-		}
-	}
-	Collections.sort(runs, new TripleSort());
-	run_writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tmpdir+"/run_"+pass_cnt+"_"+run_cnt+".data"),blocksize));
-	for(Triple<Integer,Integer,Integer> tuple : runs){
-		run_writer.writeInt(tuple.getLeft());
-		run_writer.writeInt(tuple.getMiddle());
-		run_writer.writeInt(tuple.getRight());
-	}
-	run_writer.close();
-	run_cnt++;
-	runs.clear();
-}
-run_cnt--;
-input.close();
-*/
-
-
 
 
 
