@@ -22,3 +22,12 @@
 hs_err_pid*
 
 /target/
+
+### macOS template
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+
+## Ignore File ##
+*.data

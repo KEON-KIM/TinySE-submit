@@ -85,11 +85,6 @@ public class TinySEExternalSort implements ExternalSort {
 								String tmpdir,
 								int blocksize,
 								int nblocks) throws IOException {
-		int run = 0;
-		//int nElement = (blocksize*nblocks) / 12;
-		int records = blocksize / ((Integer.SIZE/Byte.SIZE) * 3);
-		int nElement = nblocks * records;
-		
 		
 		
 		make_tmp(tmpdir);
@@ -99,28 +94,20 @@ public class TinySEExternalSort implements ExternalSort {
 				new BufferedInputStream(
 					new FileInputStream(infile), blocksize)
 				);
-//		DataManager dm = new DataManager(is);
 		DataOutputStream os;
+		
+		
+		int run = 0;
+		int membyte = nblocks*blocksize;
+		int nElement = (nblocks * blocksize) / 12 ;
+		
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
+
+		int p = is.available() / membyte;		
 		
-		int left; int middle; int right;
-		
-		
-		while(is.available() != 0) {
-			if(is.available() > nblocks*blocksize) {
-				while(dataArr.size() < nElement) {
-					left = is.readInt();
-					middle = is.readInt();
-					right = is.readInt();
-					dataArr.add(MutableTriple.of(left, middle, right));
-				}
-			} else {
-				while(is.available() != 0) {
-					left = is.readInt();
-					middle = is.readInt();
-					right = is.readInt();
-					dataArr.add(MutableTriple.of(left, middle, right));
-				}
+		for(int i = 0; i < p; i++) {
+			while(dataArr.size() < nElement) {
+				dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
 			}
 			Collections.sort(dataArr, new TupleSort());
 			os = open_output_stream(path, run, blocksize);
@@ -132,62 +119,54 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		
 		
-		/*
-		while(!dm.isEOF) {
-			
-			MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
-			dm.getTuple(ret);
-			dataArr.add(ret);
-			
-			
-			if((dataArr.size() == nElement )) {
-				
-				Collections.sort(dataArr, new TupleSort());
-				os = open_output_stream(path, run, blocksize);
-//				System.out.println(dataArr.size());
-				write_run_file(dataArr, os);
-				dataArr.clear();
-				os.close();
-				run++;
-			}
+		while(is.available() != 0) {
+			dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
 		}
-		
-		os = open_output_stream(path, run, blocksize);
 		Collections.sort(dataArr, new TupleSort());
+		os = open_output_stream(path, run, blocksize);
 		write_run_file(dataArr, os);
-		dataArr.clear();
-		dm = null;
+		
 		os.close();
-		is.close();	
-	*/
+		dataArr.clear();
+		is.close();
+	
 	}
+	
 	
 	public static void main(String[] args) throws IOException {
 		
 		
-		String infile = "./test.data";
-		String outfile = "./tmp/sorted.data";
-		String outfile1 = "./tmp/0/11.data";
-		String tmpdir = "./tmp/";
-		int blocksize = 1024;
-		int nblocks = 100;
-		String chc = "./tmp/0/116.data";
+		System.gc();
 		
+		
+		String infile = "./test2.data";
+		String outfile = "./tmp/sorted.data";
+		String tmpdir = "./tmp/";
+		int blocksize = 8192;
+		int nblocks = 2000;
+		
+		Runtime.getRuntime().gc();
 		long timestamp = System.currentTimeMillis();
 		init_run(infile, tmpdir, blocksize, nblocks);
+		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
+		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+		
+		
+		Runtime.getRuntime().gc();
 		
 		timestamp = System.currentTimeMillis();
 		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
+		used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream(outfile), blocksize)
-				);
-		DataManager dm = new DataManager(is);
+		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
+		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+		
+
 	
-		//ReadFileByte(outfile, blocksize);
+	
+//		ReadFileByte(outfile, blocksize);
 	}
 	
 	
@@ -377,6 +356,9 @@ class TupleSort implements Comparator<MutableTriple<Integer, Integer, Integer>> 
 				if(a.right > b.right) return 1;
 				else return -1;
 			}
+
+
+
 		} 
 	} 
 }
