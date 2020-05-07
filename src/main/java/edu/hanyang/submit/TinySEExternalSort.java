@@ -45,7 +45,7 @@ public class TinySEExternalSort implements ExternalSort {
 			os.writeInt(tmp.getLeft());			
 			os.writeInt(tmp.getMiddle());
 			os.writeInt(tmp.getRight());
-			os.flush();
+//			os.flush();
 		}
 	}
 	
@@ -90,57 +90,67 @@ public class TinySEExternalSort implements ExternalSort {
 		make_tmp(tmpdir);
 		String path = make_dir(tmpdir, 0);
 		
-		
-		int run = 0;
-		int nElement = (blocksize*nblocks) / 12;
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
 					new FileInputStream(infile), blocksize)
 				);
-		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		DataManager dm = new DataManager(is);
 		DataOutputStream os;
+		
+		
+		int run = 0;
+		//int nElement = (blocksize*nblocks) / 12;
+		int membyte = nblocks*blocksize;
+		
+		int records = blocksize / ((Integer.SIZE/Byte.SIZE) * 3);
+		int nElement = nblocks * records;
+		
+		
+		
+		
+		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
+		
+		
+		int ava = is.available();
 		int left; int middle; int right;
 		
+		int p = ava / membyte;
+		int q = ava % membyte;
 		
 		
 		
-		
-		
-		
-		
-		
-		while(!dm.isEOF) {
-			MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
-			
-			dm.getTuple(ret);
-			dataArr.add(ret);
-			if((dataArr.size() == nElement )) {
-				os = open_output_stream(path, run, blocksize);
-				Collections.sort(dataArr, new TupleSort());
-				/*
-				 * PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size(), new Comparator<DataManager>() {
-					public int compare(DataManager o1, DataManager o2) {
-						return o1.tuple.compareTo(o2.tuple);
-						}
-						});
-						*/
-				write_run_file(dataArr, os);
-				dataArr.clear();
-				os.close();
-				run++;
+		for(int i = 0; i < p; i++) {
+			for(int j = 0; j < nElement; j++) {
+				left = is.readInt();
+				middle = is.readInt();
+				right = is.readInt();
+				dataArr.add(MutableTriple.of(left, middle, right));
 			}
-//			System.out.println(dm.av);
+			Collections.sort(dataArr, new TupleSort());
+			os = open_output_stream(path, run, blocksize);
+			write_run_file(dataArr, os);
 			
-		}	
-		os = open_output_stream(path, run, blocksize);
-		Collections.sort(dataArr, new TupleSort());
-		write_run_file(dataArr, os);
-		dataArr.clear();
-		dm = null;
-		os.close();
-		is.close();	
+			os.close();
+			run++;
+			dataArr.clear();
+		}
 		
+		
+		for (int i = 0; i < q/12; i++) {
+			left = is.readInt();
+			middle = is.readInt();
+			right = is.readInt();
+			dataArr.add(MutableTriple.of(left, middle, right));
+		}
+		Collections.sort(dataArr, new TupleSort());
+		os = open_output_stream(path, run, blocksize);
+		write_run_file(dataArr, os);
+		
+		os.close();
+		run++;
+		dataArr.clear();
+
+	
 	}
 	
 	
@@ -163,35 +173,31 @@ public class TinySEExternalSort implements ExternalSort {
 		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
 		
+		
+	
+		ReadFileByte(outfile, blocksize);
+	}
+	
+	
+	public static void ReadFileByte(String outfile, int blocksize) throws IOException {
+		int count=0;
+		
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
 					new FileInputStream(outfile), blocksize)
 				);
 		DataManager dm = new DataManager(is);
-		System.out.println(dm.ava);
-	
-	//	ReadFileByte(chc, blocksize);
-	}
-	
-	public static void ReadFileByte(String outfile, int blocksize) {
-		int count=0;
-		try {
-			DataInputStream is = new DataInputStream(
-					new BufferedInputStream(
-						new FileInputStream(outfile), blocksize)
-					);
-			DataManager dm = new DataManager(is);
 		
-			while(true) {
-					MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
-					count++;
-					dm.getTuple(ret);
-					System.out.println(ret);
-			}
-		}catch(IOException e) {
-			System.out.println(count);
-			
+		while(!dm.isEOF) {
+				MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
+				count++;
+				dm.getTuple(ret);
+				System.out.println(ret);
 		}
+	
+		System.out.println(count);
+			
+		
 	}
 	
 	
@@ -203,7 +209,6 @@ public class TinySEExternalSort implements ExternalSort {
 			}
 		});
 		
-//		ArrayList<MutableTriple<Integer, Integer, Integer>> bufferArr = new ArrayList<>(blocksize);
 		
 		String path = make_dir(tmpdir, step);
 		
@@ -293,16 +298,14 @@ public class TinySEExternalSort implements ExternalSort {
 		} 
 	}
 }
-class DataManager implements Comparable<DataManager>{
+class DataManager implements Comparable<DataManager> {
 	public boolean isEOF = false;
-	private DataInputStream dis = null;
-	public int ava;
+	public DataInputStream dis = null;
 	public MutableTriple<Integer,Integer,Integer> tuple = new MutableTriple<Integer,Integer,Integer>(0, 0, 0);
 	
 	public DataManager(DataInputStream dis) throws IOException{
 		this.dis = dis;
 		this.tuple = new MutableTriple<Integer,Integer,Integer>(this.dis.readInt(),this.dis.readInt(),this.dis.readInt());
-		this.ava = dis.available();
 	};
 
 	private boolean readNext() throws IOException {
@@ -311,17 +314,24 @@ class DataManager implements Comparable<DataManager>{
 		this.tuple.setLeft(this.dis.readInt()); 
 		this.tuple.setMiddle(this.dis.readInt()); 
 		this.tuple.setRight(this.dis.readInt());
-		this.ava -= 12;
 		return true;
 	}
 	
 	public void getTuple(MutableTriple<Integer,Integer,Integer> ret) throws IOException{
+		
 		ret.setLeft(this.tuple.getLeft());
 		ret.setMiddle(this.tuple.getMiddle()); 
 		ret.setRight(this.tuple.getRight());
 		
 		isEOF = (!this.readNext());
 	}
+	
+	public void getTuple() throws IOException{
+		isEOF = (!this.readNext());
+	}
+	
+	
+	
 	@Override
 	public int compareTo(DataManager dm) {
 		MutableTriple<Integer,Integer,Integer> tuple1 = this.tuple;
@@ -342,9 +352,10 @@ class DataManager implements Comparable<DataManager>{
 	}
 	
 }
-class TupleSort implements Comparator<MutableTriple<Integer,Integer,Integer>> {
-	@Override
-	public int compare(MutableTriple<Integer,Integer,Integer> a, MutableTriple<Integer,Integer,Integer> b) {
+
+class TupleSort implements Comparator<MutableTriple<Integer, Integer, Integer>> {
+	@Override 
+	public int compare(MutableTriple<Integer, Integer, Integer> a, MutableTriple<Integer, Integer, Integer> b) { 
 		if(a.left > b.left) return 1;
 		else if(a.left < b.left) return -1;
 		else{
@@ -354,10 +365,10 @@ class TupleSort implements Comparator<MutableTriple<Integer,Integer,Integer>> {
 				if(a.right > b.right) return 1;
 				else return -1;
 			}
-		}
-	}
+
+
+
+		} 
+	} 
 }
-
-
-
 
