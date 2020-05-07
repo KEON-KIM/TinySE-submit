@@ -40,6 +40,10 @@ public class TinySEExternalSort implements ExternalSort {
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 
 	}
+	
+	/*
+	 * write ArrayList's file using DataOutputStream
+	 */
 	public static void write_run_file(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, DataOutputStream os) throws IOException {
 		for(MutableTriple<Integer, Integer, Integer> tmp : dataArr) {
 			os.writeInt(tmp.getLeft());			
@@ -49,6 +53,9 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 	}
 	
+	/*
+	 * make directory in each step to tmpdir
+	 */
 	public static String make_dir(String tmdir, int step) {
 		String path = tmdir+File.separator+String.valueOf(step);
 		File Folder = new File(path);
@@ -62,6 +69,11 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		return path;
 	}
+	
+	/*
+	 * make tmpdir
+	 * if already exist, ignore
+	 */
 	public static void make_tmp(String tmdir) {
 		File Folder = new File(tmdir);
 
@@ -74,6 +86,10 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		
 	}
+	
+	/*
+	 * open DataOutputStream to path/'run num'.data
+	 */
 	public static DataOutputStream open_output_stream(String path, int run, int blocksize) throws IOException {
 		return new DataOutputStream(
 				new BufferedOutputStream(
@@ -81,41 +97,54 @@ public class TinySEExternalSort implements ExternalSort {
 	}
 	
 	
+	
+	/*
+	 * create init run files
+	 */
+
 	public static void init_run(String infile, 
 								String tmpdir,
 								int blocksize,
 								int nblocks) throws IOException {
 		
 		
-		make_tmp(tmpdir);
-		String path = make_dir(tmpdir, 0);
 		
+		make_tmp(tmpdir); //make tmpdir
+		String path = make_dir(tmpdir, 0); //make tmpdir/0/ directory and return path
+		
+		//open DataInputStream to infile
 		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
 					new FileInputStream(infile), blocksize)
 				);
+		
+		//declare DataOutputStream
 		DataOutputStream os;
 		
 		
-		int run = 0;
-		int membyte = nblocks*blocksize;
-		int nElement = (nblocks * blocksize) / 12 ;
+		int run = 0; //run file number
+		int membyte = nblocks*blocksize; // whole byte that using for store files
+		int nElement = (nblocks * blocksize) / 12 ; // numbers that can contain tuple elements
 		
+		//ArrayList that size is nElement
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 
+		//numbers creating 'membyte'MB runfiles.
 		int p = is.available() / membyte;		
 		
-		for(int i = 0; i < p; i++) {
-			while(dataArr.size() < nElement) {
+		
+		for(int i = 0; i < p; i++) {//repeat p times
+			while(dataArr.size() < nElement) { // add tuples till dataArr is full
 				dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
 			}
-			Collections.sort(dataArr, new TupleSort());
-			os = open_output_stream(path, run, blocksize);
-			write_run_file(dataArr, os);
+			
+			Collections.sort(dataArr, new TupleSort());//sorting
+			os = open_output_stream(path, run, blocksize); //open outputstream to path
+			write_run_file(dataArr, os); // write
 			
 			os.close();
-			run++;
 			dataArr.clear();
+			run++;
 		}
 		
 		
@@ -169,7 +198,7 @@ public class TinySEExternalSort implements ExternalSort {
 //		ReadFileByte(outfile, blocksize);
 	}
 	
-	
+	//count and see the .data file
 	public static void ReadFileByte(String outfile, int blocksize) throws IOException {
 		int count=0;
 		
@@ -192,6 +221,9 @@ public class TinySEExternalSort implements ExternalSort {
 	}
 	
 	
+	/*
+	 * Merge nblocks-1 files
+	 */
 	public static void n_way_merge(List<DataInputStream> files, String tmpdir, int run, int step, int blocksize) throws IOException {
 		
 		PriorityQueue<DataManager> pq = new PriorityQueue<>(files.size(), new Comparator<DataManager>() {
