@@ -153,20 +153,33 @@ public class TinySEExternalSort implements ExternalSort {
 	public static void main(String[] args) throws IOException {
 		
 		
-		String infile = "./test.data";
+		System.gc();
+		
+		
+		String infile = "./test2.data";
 		String outfile = "./tmp/sorted.data";
 		String tmpdir = "./tmp/";
-		int blocksize = 1024;
-		int nblocks = 100;
+		int blocksize = 2048;
+		int nblocks = 900;
 		
+		long before = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+
 		long timestamp = System.currentTimeMillis();
 		init_run(infile, tmpdir, blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
+		
+		
+		
 		
 		timestamp = System.currentTimeMillis();
 		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
 		
+		System.gc();
+		long after  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		long usedMemory = (before - after);
+		System.out.println("Used Memory : " + usedMemory);
+
 		
 	
 //		ReadFileByte(outfile, blocksize);
