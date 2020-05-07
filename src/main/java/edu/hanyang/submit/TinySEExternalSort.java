@@ -94,7 +94,6 @@ public class TinySEExternalSort implements ExternalSort {
 				new BufferedInputStream(
 					new FileInputStream(infile), blocksize)
 				);
-		DataManager dm = new DataManager(is);
 		DataOutputStream os;
 		
 		
@@ -114,13 +113,10 @@ public class TinySEExternalSort implements ExternalSort {
 		int ava = is.available();
 		int left; int middle; int right;
 		
-		int p = ava / membyte;
-		int q = ava % membyte;
-		
-		
+		int p = ava / membyte;		
 		
 		for(int i = 0; i < p; i++) {
-			for(int j = 0; j < nElement; j++) {
+			while(dataArr.size() < nElement) {
 				left = is.readInt();
 				middle = is.readInt();
 				right = is.readInt();
@@ -136,7 +132,7 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		
 		
-		for (int i = 0; i < q/12; i++) {
+		while(is.available() != 0) {
 			left = is.readInt();
 			middle = is.readInt();
 			right = is.readInt();
@@ -149,7 +145,7 @@ public class TinySEExternalSort implements ExternalSort {
 		os.close();
 		run++;
 		dataArr.clear();
-
+		is.close();
 	
 	}
 	
@@ -159,11 +155,9 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		String infile = "./test.data";
 		String outfile = "./tmp/sorted.data";
-		String outfile1 = "./tmp/0/11.data";
 		String tmpdir = "./tmp/";
 		int blocksize = 1024;
 		int nblocks = 100;
-		String chc = "./tmp/0/116.data";
 		
 		long timestamp = System.currentTimeMillis();
 		init_run(infile, tmpdir, blocksize, nblocks);
@@ -175,7 +169,7 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		
 	
-		ReadFileByte(outfile, blocksize);
+//		ReadFileByte(outfile, blocksize);
 	}
 	
 	
