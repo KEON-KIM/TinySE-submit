@@ -104,7 +104,7 @@ public class TinySEExternalSort implements ExternalSort {
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		
 		int left; int middle; int right;
-
+		
 		
 		while(is.available() != 0) {
 			if(is.available() > nblocks*blocksize) {
@@ -130,7 +130,7 @@ public class TinySEExternalSort implements ExternalSort {
 			run++;
 			dataArr.clear();
 		}
-	
+		
 		
 		/*
 		while(!dm.isEOF) {
