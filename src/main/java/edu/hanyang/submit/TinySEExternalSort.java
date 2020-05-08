@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,6 +25,11 @@ import org.apache.commons.lang3.tuple.MutableTriple;
 
 import edu.hanyang.indexer.ExternalSort;
 
+
+
+
+
+
 public class TinySEExternalSort implements ExternalSort {
 	static int prevStep = 0;
 	static int step = 1;
@@ -34,9 +40,9 @@ public class TinySEExternalSort implements ExternalSort {
 							// creating intermediate runs
 			int blocksize, //4096 or 8192 bytes
 			int nblocks) throws IOException { // available mem, block size, M
-
-			init_run(infile, tmpdir, blocksize, nblocks);
-
+			Runtime.getRuntime().gc();
+			init_run(infile, tmpdir, blocksize, nblocks-1950);
+			Runtime.getRuntime().gc();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 
 	}
@@ -128,14 +134,24 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		//ArrayList that size is nElement
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
-
+		
+		MutableTriple<Integer, Integer, Integer>[] mt = new MutableTriple[nElement];
+		for (int i = 0; i < nElement; i++) {
+			mt[i] = new MutableTriple<Integer, Integer, Integer>();
+		}
+		
 		//numbers creating 'membyte'MB runfiles.
 		int p = is.available() / membyte;		
 		
 		
 		for(int i = 0; i < p; i++) {//repeat p times
+			int k = 0;
 			while(dataArr.size() < nElement) { // add tuples till dataArr is full
-				dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
+				mt[k].setLeft(is.readInt());
+				mt[k].setMiddle(is.readInt());
+				mt[k].setRight(is.readInt());
+				dataArr.add(mt[k]);
+				k++;
 			}
 			
 			Collections.sort(dataArr, new TupleSort());//sorting
@@ -147,9 +163,14 @@ public class TinySEExternalSort implements ExternalSort {
 			run++;
 		}
 		
-		
+		int k = 0;
 		while(is.available() != 0) {
-			dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
+			//dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
+			mt[k].setLeft(is.readInt());
+			mt[k].setMiddle(is.readInt());
+			mt[k].setRight(is.readInt());
+			dataArr.add(mt[k]);
+			k++;
 		}
 		Collections.sort(dataArr, new TupleSort());
 		os = open_output_stream(path, run, blocksize);
@@ -174,28 +195,32 @@ public class TinySEExternalSort implements ExternalSort {
 		int blocksize = 8192;
 		int nblocks = 2000;
 		
+		
+		
+		
 		Runtime.getRuntime().gc();
 		long timestamp = System.currentTimeMillis();
-		init_run(infile, tmpdir, blocksize, nblocks);
-		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		init_run(infile, tmpdir, blocksize, nblocks-1950);
+//		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
-		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+//		System.out.println("used memory is " + (used/1024)/1024 + " MB");
 		
 		
 		Runtime.getRuntime().gc();
 		
 		timestamp = System.currentTimeMillis();
 		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-		used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		
 		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
 		System.out.println("used memory is " + (used/1024)/1024 + " MB");
 		
+		
 
 	
 	
-//		ReadFileByte(outfile, blocksize);
+		//ReadFileByte(outfile, blocksize);
 	}
 	
 	//count and see the .data file
