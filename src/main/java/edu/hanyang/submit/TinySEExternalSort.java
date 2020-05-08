@@ -154,7 +154,7 @@ public class TinySEExternalSort implements ExternalSort {
 				k++;
 			}
 			
-			Collections.sort(dataArr, new TupleSort());//sorting
+			Collections.sort(dataArr);//sorting
 			os = open_output_stream(path, run, blocksize); //open outputstream to path
 			write_run_file(dataArr, os); // write
 			
@@ -172,7 +172,7 @@ public class TinySEExternalSort implements ExternalSort {
 			dataArr.add(mt[k]);
 			k++;
 		}
-		Collections.sort(dataArr, new TupleSort());
+		Collections.sort(dataArr);
 		os = open_output_stream(path, run, blocksize);
 		write_run_file(dataArr, os);
 		
@@ -401,22 +401,4 @@ class DataManager implements Comparable<DataManager> {
 	
 }
 
-class TupleSort implements Comparator<MutableTriple<Integer, Integer, Integer>> {
-	@Override 
-	public int compare(MutableTriple<Integer, Integer, Integer> a, MutableTriple<Integer, Integer, Integer> b) { 
-		if(a.left > b.left) return 1;
-		else if(a.left < b.left) return -1;
-		else{
-			if(a.middle > b.middle) return 1;
-			else if(a.middle < b.middle) return -1;
-			else{
-				if(a.right > b.right) return 1;
-				else return -1;
-			}
-
-
-
-		} 
-	} 
-}
 
