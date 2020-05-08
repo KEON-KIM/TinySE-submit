@@ -36,7 +36,7 @@ public class TinySEExternalSort implements ExternalSort {
 			int nblocks) throws IOException { // available mem, block size, M
 
 			init_run(infile, tmpdir, blocksize, nblocks);
-
+			Runtime.getRuntime().gc();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 
 	}
@@ -176,7 +176,7 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		Runtime.getRuntime().gc();
 		long timestamp = System.currentTimeMillis();
-		init_run(infile, tmpdir, blocksize, nblocks);
+		init_run(infile, tmpdir, blocksize, nblocks/2);
 		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
