@@ -114,7 +114,8 @@ public class TinySEExternalSort implements ExternalSort {
 								int nblocks) throws IOException {
 		
 		
-		nblocks /= 40;
+		nblocks /= 10;
+//		nblocks -= 1200;
 		make_tmp(tmpdir); //make tmpdir
 		String path = make_dir(tmpdir, 0); //make tmpdir/0/ directory and return path
 		
@@ -135,9 +136,6 @@ public class TinySEExternalSort implements ExternalSort {
 		//ArrayList that size is nElement
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		
-		
-		
-		
 		MutableTriple<Integer, Integer, Integer>[] mt = new MutableTriple[nElement];
 		for (int i = 0; i < nElement; i++) {
 			mt[i] = new MutableTriple<Integer, Integer, Integer>();
@@ -145,6 +143,7 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		//numbers creating 'membyte'MB runfiles.
 		int p = is.available() / membyte;		
+		
 		
 		
 		for(int i = 0; i < p; i++) {//repeat p times
@@ -195,8 +194,8 @@ public class TinySEExternalSort implements ExternalSort {
 		String infile = "./test2.data";
 		String outfile = "./tmp/sorted.data";
 		String tmpdir = "./tmp/";
-		int blocksize = 4096*2;
-		int nblocks = 2000;
+		int blocksize = 4096;
+		int nblocks = 1800;
 		
 		
 		Runtime.getRuntime().gc();
@@ -216,6 +215,7 @@ public class TinySEExternalSort implements ExternalSort {
 		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
 		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+		
 		
 		
 
