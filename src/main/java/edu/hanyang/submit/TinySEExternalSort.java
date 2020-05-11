@@ -135,6 +135,9 @@ public class TinySEExternalSort implements ExternalSort {
 		//ArrayList that size is nElement
 		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
 		
+		
+		
+		
 		MutableTriple<Integer, Integer, Integer>[] mt = new MutableTriple[nElement];
 		for (int i = 0; i < nElement; i++) {
 			mt[i] = new MutableTriple<Integer, Integer, Integer>();
@@ -199,7 +202,7 @@ public class TinySEExternalSort implements ExternalSort {
 		Runtime.getRuntime().gc();
 		long timestamp = System.currentTimeMillis();
 		
-		init_run(infile, tmpdir, blocksize, 50);
+		init_run(infile, tmpdir, blocksize, nblocks);
 		
 //		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
