@@ -112,7 +112,8 @@ public class TinySEExternalSort implements ExternalSort {
 								String tmpdir,
 								int blocksize,
 								int nblocks) throws IOException {
-		
+		Quick quick = new Quick();
+       
 		
 		nblocks /= 10;
 //		nblocks -= 1200;
@@ -155,8 +156,8 @@ public class TinySEExternalSort implements ExternalSort {
 				dataArr.add(mt[k]);
 				k++;
 			}
-			
-			Collections.sort(dataArr);//sorting
+			quick.sort(dataArr, 0, dataArr.size()-1);
+//			Collections.sort(dataArr);//sorting
 			os = open_output_stream(path, run, blocksize); //open outputstream to path
 			write_run_file(dataArr, os); // write
 			
@@ -181,19 +182,16 @@ public class TinySEExternalSort implements ExternalSort {
 		os.close();
 		dataArr.clear();
 		is.close();
-	
 	}
 	
-	
 	public static void main(String[] args) throws IOException {
+//		System.gc();
 		
 		
-		System.gc();
-		
-		
-		String infile = "./test2.data";
+		String infile = "./test.data";
 		String outfile = "./tmp/sorted.data";
 		String tmpdir = "./tmp/";
+		String Testfile = "./tmp/0/0.data";
 		int blocksize = 4096;
 		int nblocks = 1800;
 		
@@ -202,7 +200,7 @@ public class TinySEExternalSort implements ExternalSort {
 		long timestamp = System.currentTimeMillis();
 		
 		init_run(infile, tmpdir, blocksize, nblocks);
-		
+		ReadFileByte(Testfile, blocksize);
 //		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
@@ -210,18 +208,17 @@ public class TinySEExternalSort implements ExternalSort {
 		
 //		Runtime.getRuntime().gc();
 		
-		timestamp = System.currentTimeMillis();
-		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
-		System.out.println("used memory is " + (used/1024)/1024 + " MB");
-		
+//		timestamp = System.currentTimeMillis();
+//		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
+//		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+//		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
+//		System.out.println("used memory is " + (used/1024)/1024 + " MB");
 		
 		
 
 	
 	
-		//ReadFileByte(outfile, blocksize);
+		
 	}
 	
 	//count and see the .data file
@@ -347,6 +344,33 @@ public class TinySEExternalSort implements ExternalSort {
 		} 
 	}
 }
+class Quick {
+    public void sort(ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr, int l, int r){
+        int left = l;
+        int right = r;
+        int center = (l+r)/2;
+//        int pivot = dataArr.get(center).getLeft();
+        MutableTriple<Integer, Integer, Integer>pivot = dataArr.get(center);
+
+        do{
+        	while(pivot.compareTo(dataArr.get(left))==1)left++;
+//        	while(dataArr.get(left).getLeft() < pivot.getLeft())left++;
+        	while(pivot.compareTo(dataArr.get(right))==-1)right--;
+//        	while(dataArr.get(right).getLeft() > pivot.getLeft())right--;
+        	if(left <= right){
+        		MutableTriple<Integer, Integer, Integer> temp = dataArr.get(left);
+        		dataArr.set(left, dataArr.get(right));
+        		dataArr.set(right, temp);
+        		left++;
+        		right--;
+        	}
+        }while (left <= right);
+        
+        if(l < right) sort(dataArr, l, right);
+        if(r > left) sort(dataArr, left, r);
+    }
+}
+
 class DataManager implements Comparable<DataManager> {
 	public boolean isEOF = false;
 	public DataInputStream dis = null;
