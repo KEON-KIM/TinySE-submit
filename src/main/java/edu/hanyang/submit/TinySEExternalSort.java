@@ -6,6 +6,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,8 +29,8 @@ import edu.hanyang.indexer.ExternalSort;
 
 
 
-
-
+ 
+ 
 public class TinySEExternalSort implements ExternalSort {
 	static int prevStep = 0;
 	static int step = 1;
@@ -42,9 +43,10 @@ public class TinySEExternalSort implements ExternalSort {
 			int nblocks) throws IOException { // available mem, block size, M
 			Runtime.getRuntime().gc();
 			init_run(infile, tmpdir, blocksize, nblocks);
+
+			
 			Runtime.getRuntime().gc();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-
 	}
 	
 	/*
@@ -55,7 +57,6 @@ public class TinySEExternalSort implements ExternalSort {
 			os.writeInt(tmp.getLeft());			
 			os.writeInt(tmp.getMiddle());
 			os.writeInt(tmp.getRight());
-//			os.flush();
 		}
 	}
 	
@@ -109,79 +110,65 @@ public class TinySEExternalSort implements ExternalSort {
 	 */
 
 	public static void init_run(String infile, 
-								String tmpdir,
-								int blocksize,
-								int nblocks) throws IOException {
-		
-		
+			String tmpdir,
+			int blocksize,
+			int nblocks) throws IOException {
 		nblocks /= 10;
-//		nblocks -= 1200;
+		
 		make_tmp(tmpdir); //make tmpdir
 		String path = make_dir(tmpdir, 0); //make tmpdir/0/ directory and return path
-		
+
 		//open DataInputStream to infile
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream(infile), blocksize)
-				);
+		
+		DataManager dm = new DataManager( new DataInputStream(
+											new BufferedInputStream(
+												new FileInputStream(infile), blocksize)
+													));
 		
 		//declare DataOutputStream
 		DataOutputStream os;
-		
-		
+
+
 		int run = 0; //run file number
 		int membyte = nblocks*blocksize; // whole byte that using for store files
 		int nElement = (nblocks * blocksize) / 12 ; // numbers that can contain tuple elements
 		
-		//ArrayList that size is nElement
-		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
-		
-		MutableTriple<Integer, Integer, Integer>[] mt = new MutableTriple[nElement];
-		for (int i = 0; i < nElement; i++) {
-			mt[i] = new MutableTriple<Integer, Integer, Integer>();
-		}
-		
-		//numbers creating 'membyte'MB runfiles.
-		int p = is.available() / membyte;		
+		MutableTriple<Integer, Integer, Integer> tuple = new MutableTriple<>();
+		int p = dm.dis.available() / membyte;
 		
 		
 		
-		for(int i = 0; i < p; i++) {//repeat p times
-			int k = 0;
-			while(dataArr.size() < nElement) { // add tuples till dataArr is full
-				mt[k].setLeft(is.readInt());
-				mt[k].setMiddle(is.readInt());
-				mt[k].setRight(is.readInt());
-				dataArr.add(mt[k]);
-				k++;
+		for(int i = 0; i < p; i++) { //repeat p times
+			ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
+			for(int j = 0; j < nElement; j++) {
+				dm.getTuple(tuple);
+				dataArr.add(tuple);
+				tuple = new MutableTriple<>();
+				
 			}
-			
-			Collections.sort(dataArr);//sorting
+			Collections.sort(dataArr);
 			os = open_output_stream(path, run, blocksize); //open outputstream to path
 			write_run_file(dataArr, os); // write
 			
-			os.close();
 			dataArr.clear();
+			os.close();
 			run++;
 		}
 		
-		int k = 0;
-		while(is.available() != 0) {
-			//dataArr.add(MutableTriple.of(is.readInt(), is.readInt(), is.readInt()));
-			mt[k].setLeft(is.readInt());
-			mt[k].setMiddle(is.readInt());
-			mt[k].setRight(is.readInt());
-			dataArr.add(mt[k]);
-			k++;
+		ArrayList<MutableTriple<Integer, Integer, Integer>> dataArr = new ArrayList<>(nElement);
+		while(dm.dis.available() != 0)	 {
+			dm.getTuple(tuple);
+			dataArr.add(tuple);
+			tuple = new MutableTriple<>();
 		}
 		Collections.sort(dataArr);
-		os = open_output_stream(path, run, blocksize);
-		write_run_file(dataArr, os);
+		os = open_output_stream(path, run, blocksize); //open outputstream to path
+		write_run_file(dataArr, os); // write
 		
-		os.close();
 		dataArr.clear();
-		is.close();
-	
+		os.close();
+
+
 	}
 	
 	
@@ -195,26 +182,31 @@ public class TinySEExternalSort implements ExternalSort {
 		String outfile = "./tmp/sorted.data";
 		String tmpdir = "./tmp/";
 		int blocksize = 4096;
-		int nblocks = 1800;
+		int nblockss;
+		int nblocks = 1000;
+		System.out.println("	init				externerl");
 		
-		
+		clean("./tmp");
 		Runtime.getRuntime().gc();
 		long timestamp = System.currentTimeMillis();
 		
 		init_run(infile, tmpdir, blocksize, nblocks);
 		
-//		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
 		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
-//		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+		long init_t = System.currentTimeMillis() - timestamp;
 		
-//		Runtime.getRuntime().gc();
+		Runtime.getRuntime().gc();
 		
 		timestamp = System.currentTimeMillis();
 		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
 		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+		
+		System.out.println();
+		
 		
 		
 		
@@ -222,6 +214,28 @@ public class TinySEExternalSort implements ExternalSort {
 	
 	
 		//ReadFileByte(outfile, blocksize);
+	}
+	public void init() {
+		clean("./tmp");
+		File resultFile = new File("./sorted.data");
+		if(resultFile.exists()) {
+			resultFile.delete();
+		}
+	}
+	public static void clean(String dir) {
+		File file = new File(dir);
+		File[] tmpFiles = file.listFiles();
+		if (tmpFiles != null) {
+			for (int i = 0; i < tmpFiles.length; i++) {
+				if (tmpFiles[i].isFile()) {
+					tmpFiles[i].delete();
+				} else {
+					clean(tmpFiles[i].getAbsolutePath());
+				}
+				tmpFiles[i].delete();
+			}
+			file.delete();
+		}
 	}
 	
 	//count and see the .data file
@@ -278,19 +292,19 @@ public class TinySEExternalSort implements ExternalSort {
 			os = open_output_stream(path, run, blocksize);
 		}
 		
+		MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
+		
 		while(pq.size() != 0) {
-			
 			DataManager dm = pq.poll();
-			MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
+			
 			dm.getTuple(tmp);
 			
 			os.writeInt(tmp.left);
 			os.writeInt(tmp.middle);
 			os.writeInt(tmp.right);
-			
 			if(dm.isEOF) {
 				continue;
-			}
+			} 
 			pq.add(dm);
 			
 			
@@ -305,7 +319,7 @@ public class TinySEExternalSort implements ExternalSort {
 		File[] fileArr = (new File(tmpdir + File.separator + String.valueOf(prevStep))).listFiles();
 		List<DataInputStream> files = new ArrayList<>();
 		int run = 0;
-		
+//		nblocks /= 10;
 		if (fileArr.length <= nblocks - 1) {
 			run = -1;
 			for(File f : fileArr) {
@@ -347,7 +361,7 @@ public class TinySEExternalSort implements ExternalSort {
 		} 
 	}
 }
-class DataManager implements Comparable<DataManager> {
+class DataManager implements Comparable<DataManager>, Cloneable {
 	public boolean isEOF = false;
 	public DataInputStream dis = null;
 	public MutableTriple<Integer,Integer,Integer> tuple = new MutableTriple<Integer,Integer,Integer>(0, 0, 0);
@@ -358,29 +372,24 @@ class DataManager implements Comparable<DataManager> {
 	};
 
 	private boolean readNext() throws IOException {
-		if(this.dis.available() == 0) return false;
-		
+		try {
 		this.tuple.setLeft(this.dis.readInt()); 
+		} catch(IOException e) {
+			return false;
+		}
 		this.tuple.setMiddle(this.dis.readInt()); 
 		this.tuple.setRight(this.dis.readInt());
 		return true;
+		
 	}
 	
 	public void getTuple(MutableTriple<Integer,Integer,Integer> ret) throws IOException{
-		
 		ret.setLeft(this.tuple.getLeft());
 		ret.setMiddle(this.tuple.getMiddle()); 
 		ret.setRight(this.tuple.getRight());
 		
 		isEOF = (!this.readNext());
 	}
-	
-	public void getTuple() throws IOException{
-		isEOF = (!this.readNext());
-	}
-	
-	
-	
 	@Override
 	public int compareTo(DataManager dm) {
 		MutableTriple<Integer,Integer,Integer> tuple1 = this.tuple;
@@ -401,5 +410,4 @@ class DataManager implements Comparable<DataManager> {
 	}
 	
 }
-
 
