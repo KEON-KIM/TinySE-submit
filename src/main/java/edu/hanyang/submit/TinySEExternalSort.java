@@ -3,25 +3,18 @@ package edu.hanyang.submit;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.tuple.MutableTriple;
 
 import edu.hanyang.indexer.ExternalSort;
@@ -42,16 +35,11 @@ public class TinySEExternalSort implements ExternalSort {
 			int blocksize, //4096 or 8192 bytes
 			int nblocks) throws IOException { // available mem, block size, M
 			Runtime.getRuntime().gc();
-			long timestamp = System.currentTimeMillis();
 			init_run(infile, tmpdir, blocksize, nblocks);
-			long init_t = System.currentTimeMillis() - timestamp;
-			System.out.println("init run:"+init_t);
+
 			
 			Runtime.getRuntime().gc();
-			timestamp = System.currentTimeMillis();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-			long ext = System.currentTimeMillis() - timestamp;
-			System.out.println("merge:"+ext);
 	}
 	
 	/*
@@ -168,10 +156,8 @@ public class TinySEExternalSort implements ExternalSort {
 			tuple = new MutableTriple<>();
 		}
 		Collections.sort(dataArr);
-		long timestamp = System.currentTimeMillis();
 		os = open_output_stream(path, run, blocksize); //open outputstream to path
 		write_run_file(dataArr, os); // write
-		System.out.println("write runfile time : "+(System.currentTimeMillis() - timestamp));
 		
 		dataArr.clear();
 		os.close();
@@ -179,94 +165,94 @@ public class TinySEExternalSort implements ExternalSort {
 
 	}
 	
-	
-	public static void main(String[] args) throws IOException {
-		
-		
-		System.gc();
-		
-		
-		String infile = "./test2.data";
-		String outfile = "./tmp/sorted.data";
-		String tmpdir = "./tmp/";
-		int blocksize = 4096;
-		int nblockss;
-		int nblocks = 1000;
-		System.out.println("	init				externerl");
-		
-		clean("./tmp");
-		Runtime.getRuntime().gc();
-		long timestamp = System.currentTimeMillis();
-		
-		init_run(infile, tmpdir, blocksize, nblocks);
-		
-		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
-		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
-		long init_t = System.currentTimeMillis() - timestamp;
-		
-		Runtime.getRuntime().gc();
-		
-		timestamp = System.currentTimeMillis();
-		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
-		used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
-		System.out.println("used memory is " + (used/1024)/1024 + " MB");
-		
-		System.out.println();
-		
-		
-		
-		
-
-	
-	
-		//ReadFileByte(outfile, blocksize);
-	}
-	public void init() {
-		clean("./tmp");
-		File resultFile = new File("./sorted.data");
-		if(resultFile.exists()) {
-			resultFile.delete();
-		}
-	}
-	public static void clean(String dir) {
-		File file = new File(dir);
-		File[] tmpFiles = file.listFiles();
-		if (tmpFiles != null) {
-			for (int i = 0; i < tmpFiles.length; i++) {
-				if (tmpFiles[i].isFile()) {
-					tmpFiles[i].delete();
-				} else {
-					clean(tmpFiles[i].getAbsolutePath());
-				}
-				tmpFiles[i].delete();
-			}
-			file.delete();
-		}
-	}
+//	
+//	public static void main(String[] args) throws IOException {
+//		
+//		
+//		System.gc();
+//		
+//		
+//		String infile = "./test2.data";
+//		String outfile = "./tmp/sorted.data";
+//		String tmpdir = "./tmp/";
+//		int blocksize = 4096;
+//		int nblockss;
+//		int nblocks = 1000;
+//		System.out.println("	init				externerl");
+//		
+//		clean("./tmp");
+//		Runtime.getRuntime().gc();
+//		long timestamp = System.currentTimeMillis();
+//		
+//		init_run(infile, tmpdir, blocksize, nblocks);
+//		
+//		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+//		System.out.printf("blocksize : %d, nblocks : %d 일때\n", blocksize, nblocks);
+//		System.out.println("init run time duration: " + (System.currentTimeMillis() - timestamp));
+//		long init_t = System.currentTimeMillis() - timestamp;
+//		
+//		Runtime.getRuntime().gc();
+//		
+//		timestamp = System.currentTimeMillis();
+//		_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
+//		used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+//		System.out.println("external merge time duration: " + (System.currentTimeMillis() - timestamp));
+//		System.out.println("used memory is " + (used/1024)/1024 + " MB");
+//		
+//		System.out.println();
+//		
+//		
+//		
+//		
+//
+//	
+//	
+//		//ReadFileByte(outfile, blocksize);
+//	}
+//	public void init() {
+//		clean("./tmp");
+//		File resultFile = new File("./sorted.data");
+//		if(resultFile.exists()) {
+//			resultFile.delete();
+//		}
+//	}
+//	public static void clean(String dir) {
+//		File file = new File(dir);
+//		File[] tmpFiles = file.listFiles();
+//		if (tmpFiles != null) {
+//			for (int i = 0; i < tmpFiles.length; i++) {
+//				if (tmpFiles[i].isFile()) {
+//					tmpFiles[i].delete();
+//				} else {
+//					clean(tmpFiles[i].getAbsolutePath());
+//				}
+//				tmpFiles[i].delete();
+//			}
+//			file.delete();
+//		}
+//	}
 	
 	//count and see the .data file
-	public static void ReadFileByte(String outfile, int blocksize) throws IOException {
-		int count=0;
-		
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream(outfile), blocksize)
-				);
-		DataManager dm = new DataManager(is);
-		
-		while(!dm.isEOF) {
-				MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
-				count++;
-				dm.getTuple(ret);
-				System.out.println(ret);
-		}
-	
-		System.out.println(count);
-			
-		
-	}
+//	public static void ReadFileByte(String outfile, int blocksize) throws IOException {
+//		int count=0;
+//		
+//		DataInputStream is = new DataInputStream(
+//				new BufferedInputStream(
+//					new FileInputStream(outfile), blocksize)
+//				);
+//		DataManager dm = new DataManager(is);
+//		
+//		while(!dm.isEOF) {
+//				MutableTriple<Integer, Integer, Integer> ret = new MutableTriple<Integer, Integer, Integer>();
+//				count++;
+//				dm.getTuple(ret);
+//				System.out.println(ret);
+//		}
+//	
+//		System.out.println(count);
+//			
+//		
+//	}
 	
 	
 	/*
