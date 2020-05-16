@@ -42,11 +42,16 @@ public class TinySEExternalSort implements ExternalSort {
 			int blocksize, //4096 or 8192 bytes
 			int nblocks) throws IOException { // available mem, block size, M
 			Runtime.getRuntime().gc();
+			long timestamp = System.currentTimeMillis();
 			init_run(infile, tmpdir, blocksize, nblocks);
-
+			long init_t = System.currentTimeMillis() - timestamp;
+			System.out.println("init run:"+init_t);
 			
 			Runtime.getRuntime().gc();
+			timestamp = System.currentTimeMillis();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
+			long ext = System.currentTimeMillis() - timestamp;
+			System.out.println("merge:"+ext);
 	}
 	
 	/*
@@ -150,6 +155,7 @@ public class TinySEExternalSort implements ExternalSort {
 			os = open_output_stream(path, run, blocksize); //open outputstream to path
 			write_run_file(dataArr, os); // write
 			
+			
 			dataArr.clear();
 			os.close();
 			run++;
@@ -162,8 +168,10 @@ public class TinySEExternalSort implements ExternalSort {
 			tuple = new MutableTriple<>();
 		}
 		Collections.sort(dataArr);
+		long timestamp = System.currentTimeMillis();
 		os = open_output_stream(path, run, blocksize); //open outputstream to path
 		write_run_file(dataArr, os); // write
+		System.out.println("write runfile time : "+(System.currentTimeMillis() - timestamp));
 		
 		dataArr.clear();
 		os.close();
