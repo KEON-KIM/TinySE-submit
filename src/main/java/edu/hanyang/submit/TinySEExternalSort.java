@@ -34,11 +34,9 @@ public class TinySEExternalSort implements ExternalSort {
 							// creating intermediate runs
 			int blocksize, //4096 or 8192 bytes
 			int nblocks) throws IOException { // available mem, block size, M
-			Runtime.getRuntime().gc();
 			init_run(infile, tmpdir, blocksize, nblocks);
 
 			
-			Runtime.getRuntime().gc();
 			_externalMergeSort(tmpdir, outfile, nblocks, blocksize);
 	}
 	
@@ -161,6 +159,7 @@ public class TinySEExternalSort implements ExternalSort {
 		
 		dataArr.clear();
 		os.close();
+		dm.dis.close();
 
 
 	}
@@ -287,6 +286,8 @@ public class TinySEExternalSort implements ExternalSort {
 		}
 		
 		MutableTriple<Integer, Integer, Integer> tmp = new MutableTriple<Integer, Integer, Integer>();
+		
+		
 		
 		while(pq.size() != 0) {
 			DataManager dm = pq.poll();
