@@ -11,21 +11,50 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 
 	@Override
-	public void insert(int arg0, int arg1) {
+	public void insert(int key, int val) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void open(String arg0, String arg1, int arg2, int arg3) {
+	public void open(String metafile, String filepath, int blocksize, int nblocks) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public int search(int arg0) {
+	public int search(int key) {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+	
+	public boolean isLeafNode(Node node) {
+		
+	}
+	public boolean isRootNode(Node node) {
+		
+	}
+	public void splitLeafNode(Node node) {
+		
+	}
+	public void splitNonLeafNode(Node node) {
+		
+	}
+	
 
+}
+
+
+class Node {
+	
+	boolean isFull = false;
+	boolean isLeaf;
+	boolean isRoot;
+	int fanout;
+	
+	public boolean isHalf() {
+		
+	}
+	
+	
 }
