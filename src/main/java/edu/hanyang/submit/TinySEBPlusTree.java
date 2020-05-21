@@ -27,5 +27,34 @@ public class TinySEBPlusTree implements BPlusTree{
 		// TODO Auto-generated method stub
 		return 0;
 	}
+	
+	public boolean isLeafNode(Node node) {
+		
+	}
+	public boolean isRootNode(Node node) {
+		
+	}
+	public void splitLeafNode(Node node) {
+		
+	}
+	public void splitNonLeafNode(Node node) {
+		
+	}
+	
 
+}
+
+
+class Node {
+	
+	boolean isFull = false;
+	boolean isLeaf;
+	boolean isRoot;
+	int fanout;
+	
+	public boolean isHalf() {
+		
+	}
+	
+	
 }
