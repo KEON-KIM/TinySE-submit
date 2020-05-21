@@ -93,17 +93,17 @@ class BTNode {
 		if(keys.size() > fanout/2) return true;
 		return false;
 	}
+	
 	/*
 	 * node안에서 key값에 해당하는 point를 return
+	 * 이부분은 다시 짜야함
 	 */
-	
 	public BTNode getkey(int key){ 
 		
 		//node안에 key가 있으면 해당 point+1 return
 		if (keys.contains(key)) {
 			return points.get(keys.indexOf(key) + 1);
 		}
-		
 		//node안에 key가 없으면 keys의 범위를 검색해 points return
 		Iterator<Integer> it = keys.iterator();
 		while(it.hasNext()){
@@ -113,10 +113,7 @@ class BTNode {
             }
         }
 		
-		return points.get(points.size()-1);
-		
-		
-		
+		return points.get(points.size()-1);	
     }
 
 
