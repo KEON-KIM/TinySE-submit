@@ -1,6 +1,7 @@
 package edu.hanyang.submit;
 
 import edu.hanyang.indexer.BPlusTree;
+import java.util.LinkedList;
 
 public class TinySEBPlusTree implements BPlusTree{
 
@@ -29,10 +30,10 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	
 	public boolean isLeafNode(Node node) {
-		
+		return true;
 	}
 	public boolean isRootNode(Node node) {
-		
+		return true;
 	}
 	public void splitLeafNode(Node node) {
 		
@@ -43,17 +44,25 @@ public class TinySEBPlusTree implements BPlusTree{
 	
 
 }
-
+class Set<E, T> {
+	E key;
+	T val;
+	
+	public Set<E, T>(E key, T val) {
+		this.key = key;
+		this.val = val;
+	}
+}
 
 class Node {
-	
+//	LinkedList<> node = new LinkedList<>()
 	boolean isFull = false;
 	boolean isLeaf;
 	boolean isRoot;
 	int fanout;
 	
 	public boolean isHalf() {
-		
+		return true;
 	}
 	
 	
