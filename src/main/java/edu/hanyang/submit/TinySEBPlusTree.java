@@ -52,8 +52,13 @@ public class TinySEBPlusTree implements BPlusTree{
 class BTNode {
 	LinkedList<Integer> keys = new LinkedList<>(); //blocksize(fanout) 만큼의 길이
 	ArrayList<BTNode> points; // blocksize+1(fanout) 만큼의 길이
+	/* 추상적인 BTNode의 모습
+	 *    |k_1|k_2|k_3|k_4|k_5|...|k_n|		n개의 key linked list
+	 *  |p_1|p_2|p_3|p_4|p_5|...|p_n|p_n+1|	n+1개의 BTNode 주소가 저장된 ArrayList
+	 * */
 	
-	int fanout;
+	
+	int fanout; // blocksize를 의미함
 	
 	boolean isRoot = false;
 	boolean isFull = false;
