@@ -34,11 +34,7 @@ public class TinySEExternalSort implements ExternalSort {
 							// creating intermediate runs
 			int blocksize, //4096 or 8192 bytes
 			int nblocks) throws IOException { // available mem, block size, M
-<<<<<<< HEAD
-			
-			Runtime.getRuntime().gc();
-=======
->>>>>>> ebbedf3c20180bb0f2e2778ea6631af4f9ed5287
+
 			init_run(infile, tmpdir, blocksize, nblocks);
 
 			
