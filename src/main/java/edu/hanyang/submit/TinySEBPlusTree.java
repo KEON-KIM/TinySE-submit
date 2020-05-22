@@ -18,6 +18,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	public void insert(int key, int val) {
 		// TODO Auto-generated method stub
 		
+		
 	}
 
 	@Override
@@ -50,7 +51,7 @@ public class TinySEBPlusTree implements BPlusTree{
 }
 
 class BTNode {
-	LinkedList<Integer> keys = new LinkedList<>(); //blocksize(fanout) 만큼의 길이
+	ArrayList<Integer> keys; //blocksize(fanout) 만큼의 길이
 	ArrayList<BTNode> points; // blocksize+1(fanout) 만큼의 길이
 	/* 추상적인 BTNode의 모습
 	 *    |k_1|k_2|k_3|k_4|k_5|...|k_n|		n개의 key linked list
@@ -74,6 +75,7 @@ class BTNode {
 		this.fanout = fanout;
 		this.isRoot = true;
 		this.isLeaf = true;
+		this.keys = new ArrayList<>(fanout);
 		this.points = new ArrayList<>(fanout+1);
 	}
 	/*
@@ -83,6 +85,7 @@ class BTNode {
 	public BTNode(int fanout, boolean isLeaf) {
 		this.fanout = fanout;
 		this.isLeaf = isLeaf;
+		this.keys = new ArrayList<>(fanout);
 		this.points = new ArrayList<>(fanout+1);
 	}
 	
@@ -105,21 +108,28 @@ class BTNode {
 	 */
 	public BTNode getkey(int key){ 
 		
-		//node안에 key가 있으면 해당 point+1 return
-		if (keys.contains(key)) {
-			return points.get(keys.indexOf(key) + 1);
-		}
-		//node안에 key가 없으면 keys의 범위를 검색해 points return
-		Iterator<Integer> it = keys.iterator();
-		while(it.hasNext()){
-            int n = it.next();
-            if(key < n) {
-            	return points.get(keys.indexOf(n));
-            }
-        }
+		if(key >= keys.get(this.fanout - 1)) return points.get(this.fanout);
 		
-		return points.get(points.size()-1);	
+		Iterator<Integer> it = keys.iterator();
+		int i = 0;
+		
+		/*
+		 * 이부분이문제
+		 * it.next가 key보다 큰게 나왔을때 i++을 할까 안할까에따라 다름
+		 */
+		while((it.next() <= key) && it.hasNext() ){
+            i++;
+        }
+		return points.get(i);
     }
+	public static void main(String[] args) {
+		ArrayList<Integer> a = new ArrayList<>(3);
+		a.add(1);
+		a.add(2);
+		a.add(3);
+		
+		System.out.println(a.get(-1));
+	}
 
 
 }
