@@ -12,6 +12,7 @@ import java.io.RandomAccessFile;
 import java.util.*;
 
 public class TinySEBPlusTree implements BPlusTree{
+	private BTNode init_node;
 	
 	public static void main(String[] args) throws IOException {
 		String filepath = "./src/test/resources/stage3-15000000.data";
@@ -32,8 +33,6 @@ public class TinySEBPlusTree implements BPlusTree{
 		for(int i = 0; i < blocksize / 8; i++) {
 			int key = is.readInt();
 			int val = is.readInt();
-			
-			
 			init_node.insert(key, val);
 			
 		}
@@ -41,12 +40,6 @@ public class TinySEBPlusTree implements BPlusTree{
 		for(int i : init_node.keys) {
 			System.out.println(i);
 		}
-		System.out.println(init_node.keys.size());
-		
-		
-		
-		
-		
 	}
 	private static byte[] readFromFile(String filePath, int position, int size)
 		throws IOException {
@@ -73,47 +66,26 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 
 	@Override
-	public void insert(int key, int val) {
-		// TODO Auto-generated method stub
+	public void insert(int key, int val, int nblocks) {
+		BTNode p = this.init_node;
+		BTNode newNode = new BTNode(nblocks);
+		
 		
 		
 	}
 
 	@Override
 	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {
+		init_node = new BTNode(blocksize);
 		
-		DataInputStream is =  new DataInputStream(
+		DataInputStream is = new DataInputStream(
 				new BufferedInputStream(
 						new FileInputStream(filepath), blocksize)
-								);
+							);
 		
-		int offset = 0;
-		int num_pairs = is.available() / 8 ; // 총 바이트 / (4*2)
-		
-		//init node 생성
-		BTNode init_node = new BTNode(blocksize);
-		init_node.offset = offset;
-		
-		for(int i = 0; i < blocksize / 8; i++) {
-			int key = is.readInt();
-			int val = is.readInt();
-			
-			
-			init_node.insert(key, val);
+		while(is.available() != 0) {
 			
 		}
-		
-		for(int i : init_node.keys) {
-			System.out.println(i);
-		}
-		
-		
-		
-		
-		
-			
-		
-		
 		
 	}
 
@@ -201,17 +173,18 @@ class BTNode {
 		
 		Iterator<Integer> it = keys.iterator();
 		
+		
+		
 		while(it.hasNext()) {
 			int n = it.next();
 			if(n > key) {
 				keys.add(keys.indexOf(n), key);
 				vals.add(keys.indexOf(n), val);
-				break;
+				return ;
 			}
 		}
 		keys.add(key);
 		vals.add(val);
-		
 		
 	}
 	
@@ -239,25 +212,3 @@ class BTNode {
 
 }
 
-
-
-//	
-//	/*
-//	 * Leaf or non-Leaf 노드를 만든데 쓰는 생성자
-//	 */
-//	public Node(int fanout, boolean isLeaf, int label, Set point) {
-//		this.fanout = fanout;
-//		this.isLeaf = isLeaf;
-//		node.add(new Set(label, point));
-//	}
-//	
-//	
-//	public boolean isHalf() {
-//		if (this.node.size() > fanout/2) {
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	
-//}
