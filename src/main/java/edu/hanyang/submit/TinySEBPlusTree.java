@@ -97,6 +97,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	public void UpdateNode() throws IOException{
 		
+
 	}
 	
 	//메타파일 읽고 루트의 offset(node번호) 찾기
@@ -400,23 +401,4 @@ class BTNode {
 
 
 
-//	
-//	/*
-//	 * Leaf or non-Leaf 노드를 만든데 쓰는 생성자
-//	 */
-//	public Node(int fanout, boolean isLeaf, int label, Set point) {
-//		this.fanout = fanout;
-//		this.isLeaf = isLeaf;
-//		node.add(new Set(label, point));
-//	}
-//	
-//	
-//	public boolean isHalf() {
-//		if (this.node.size() > fanout/2) {
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	
-//}
+
