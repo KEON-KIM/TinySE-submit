@@ -20,8 +20,6 @@ import org.apache.commons.lang3.tuple.MutableTriple;
 import edu.hanyang.indexer.ExternalSort;
 
 
-
-
  
  
 public class TinySEExternalSort implements ExternalSort {

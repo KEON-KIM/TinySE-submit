@@ -112,6 +112,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	public void UpdateNode() throws IOException{
 		
+
 	}
 //	
 //	//메타파일 읽고 루트의 offset(node번호) 찾기
