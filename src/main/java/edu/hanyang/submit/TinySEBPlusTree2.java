@@ -225,10 +225,7 @@ class BTNodes {
 //		this.vals = new ArrayList<>(fanout+1);
 //	}
 	
-	public boolean isFull() {
-		if(keys.size() == fanout) this.isFull = true;
-		return isFull;
-	}
+	
 	/*
 	 * halfrule을 만족하면 true
 	 * 아니라면 false
