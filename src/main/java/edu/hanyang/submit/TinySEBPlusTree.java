@@ -19,7 +19,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	static int offset;
 	static int M=3;
 	static String path = "./tmp/";
-	static int blocksize = M*4;
+	static int blocksize = ((M*2)+1)*4;
 	static BTNode node = new BTNode(M); //비교 해야할 글로벌 노드 
 	public static void main(String[] args) throws IOException {
 		
