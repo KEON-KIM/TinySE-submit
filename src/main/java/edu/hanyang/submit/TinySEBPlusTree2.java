@@ -344,6 +344,7 @@ class BTNodes {
 		os.close();
 	}
 	//Root가 Full일 때 나누는 경우
+	//Split은 leaf nonleaf만 생각.
 	public void Split(int key, int val) throws IOException{
 		System.out.println("offset : "+offset);
 		BTNodes root = new BTNodes(fanout); //root노드 생성 

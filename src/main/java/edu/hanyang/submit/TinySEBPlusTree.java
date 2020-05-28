@@ -1,8 +1,7 @@
 package edu.hanyang.submit;
 
 import edu.hanyang.indexer.BPlusTree;
-import java.util.LinkedList;
-import java.util.ArrayList;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -16,16 +15,15 @@ import java.io.RandomAccessFile;
 import java.util.*;
 
 public class TinySEBPlusTree implements BPlusTree{
-//	static int M=3;
-//	static String path = "./tmp/";
-//	static int blocksize = M*4;
-//	static BTNode node = new BTNode(M); //비교 해야할 글로벌 노드 
-	
-	
-	int blocksize;
+	String filepath ="./tmp/node.meta";
+	String Nfilepath = "./tmp/node.data";
+	int blocksize=32;
 	int nblocks;
+	List<Integer> history = new ArrayList<Integer>();
+	
 	RandomAccess node_File;
 	RandomAccess meta_File;
+	Node node = new Node(32,0,3); //Cusor Nodes
 	
 	int offset;
 	int node_cur;
@@ -35,20 +33,11 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 	}
 	public static void main(String[] args) throws IOException {
-		String filePath = "./test2.data";
-		
-		int[] integers;
-		
-		integers = readFromFile(filePath, 0, 2048);
-		int k = 0;
-		for(int i : integers) {
-			System.out.println(i);
-			k++;
-		}
-		System.out.println(k);
-		
-		
-		
+		TinySEBPlusTree Tree = new TinySEBPlusTree();
+		Tree.insert(5, 10);
+		Tree.insert(6, 15);
+		Tree.insert(4, 20);
+		System.out.println("Complete");
 	}
 	public static String make_dir(String tmdir, int step) {
 		String path = tmdir+File.separator+String.valueOf(step);
@@ -88,16 +77,28 @@ public class TinySEBPlusTree implements BPlusTree{
 		file.close();
 		return integers;
 	}
+	private static int[] readFromMFile(String filePath, int position, int size)
+		throws IOException {
+		RandomAccessFile file = new RandomAccessFile(filePath, "r");
+		file.seek(position);
+		int[] integers = new int[size/Integer.BYTES];
+		for(int i = 0; i < integers.length; i++) {
+			integers[i] = file.readInt();
+		}
+		file.close();
+		return integers;
+	}
 	
 	private static void writeToFile(String filePath, int[] integers, int position)
 		throws IOException{
 		RandomAccessFile file = new RandomAccessFile(filePath, "rw");
-		file.seek(position);
+		file.seek(position); 
 		for(int i : integers) {
 			file.writeInt(i);
 		}
 		file.close();
 	}
+	
 
 	@Override
 	public void close() {
@@ -107,34 +108,44 @@ public class TinySEBPlusTree implements BPlusTree{
 
 	@Override
 	public void insert(int key, int val) throws IOException{
-
-	}
-	public void UpdateNode() throws IOException{
+		if(node.status != 0) {
+			//node초기화
+		}
+		init_insert(node, key, val);
+		if(isFull(node)) {
+			if(isRootNode(node)) {
+				System.out.println("Node is Full");
+				splitLeafNode(node);
+			}
+			else {
+				System.out.println("Node is Full");
+				splitNonLeafNode(node);
+			}
+				//아닐 때
+		}
+		//node 변경하기
+//		int[] Array = new int[1];
+//		node = new Node(Array, blocksize, 2,0);
 		
-
 	}
-//	
-//	//메타파일 읽고 루트의 offset(node번호) 찾기
-//	public int read_root_node() throws IOException{
-//		boolean EOF = false;
-//		DataInputStream is = new DataInputStream(
-//				new BufferedInputStream(
-//						new FileInputStream(path+File.separator+"node.meta"), blocksize));
-//		while(!EOF) {
-//			try {
-//				int root = is.readInt();
-//				int root_offset = is.readInt();
-//				if (root == 1)return root_offset;
-//			}catch(Exception e) {
-//				EOF = true;
-//			}
-//		}
-//		return -1; //-1 몾찾음
-//	}
+	//node = origin, root = new, leaf = new
+	public void UpdateNode(Node node, Node parent, Node child) throws IOException{
+		//root일경우, root노드leaf노드(init경우) 같음
+		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+		writeToFile(Nfilepath, BufferedIntegerArray(parent.keys, parent.vals),parent.offset*blocksize);
+		writeToFile(Nfilepath, BufferedIntegerArray(child.keys, child.vals),child.offset*blocksize);
+	}
+	//node = Origin, newnode = new
+	public void UpdateMeta(Node node, Node parent, Node child) throws IOException {
+	 //init시  모두 leaf혹은 root이므로 모두 meta파일에 저장해야함.
+		writeToFile(filepath, BufferedMetaArray(node.offset, node.status),node.offset*8);
+		writeToFile(filepath, BufferedMetaArray(parent.offset, parent.status),parent.offset*8);
+		writeToFile(filepath, BufferedMetaArray(child.offset, child.status),child.offset*8);
+	}
 
 	@Override
 	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
-	
+		
 	}
 
 	@Override
@@ -143,19 +154,202 @@ public class TinySEBPlusTree implements BPlusTree{
 		return 0;
 	}
 	
-	public boolean isLeafNode(BTNode node) {
-		return true;
+	public boolean isLeafNode(Node node) {
+		if(node.status == 2||node.status==3)
+			return true;
+		return false;
 	}
-	public boolean isRootNode(BTNode node) {
-		return true;
+	public boolean isRootNode(Node node) {
+		if(node.status == 0||node.status==3)
+			return true;
+		return false;
 	}
-	public void splitLeafNode(BTNode node) {
+	public boolean isFull(Node node) {
+		if(node.keys.size() == (blocksize-8)/(Integer.BYTES*2)) return true;
+		return false;
+	}
+	//Node파일에 저장시킬 Integer Array생성
+	public int[] BufferedIntegerArray(List<Integer> keys, List<Integer> vals) {
+		int[] Array= new int[(blocksize-Integer.BYTES) / Integer.BYTES];
+		int i = 0;
+		System.out.println("Keys : "+keys);
+		System.out.println("Vals : "+vals);
+		for( i = 0; i < keys.size(); i++) {
+			Array[i*2] = vals.get(i);
+			Array[i*2+1] = keys.get(i);
+		}
+		//Error 때문에 임시방편 ㅠ
+		if(i+1==vals.size()) {
+			Array[i*2] = vals.get(i);
+		}
+		//padding
+		for(int j = keys.size() * 2+1  ; j < Array.length; j++) {
+			Array[j] = -1;
+		}
 		
+		System.out.print("Array : [");
+		for(int k = 0; k < Array.length; k++) {
+			System.out.print(" "+Array[k]+",");
+		}
+		System.out.println("]");
+		
+		return Array;
 	}
-	public void splitNonLeafNode(BTNode node) {
+	//Mata파일 저장시킬 Integer Array 생성
+	public int[] BufferedMetaArray(int offset, int status) {
+		int[] Array= new int[2];
+		Array[0] = status;
+		Array[1] = offset;
+		
+		return Array;
+	}
+	public void init_insert(Node node, int key, int val) throws IOException{
+		if (node.keys.size() == 0) {
+			node.keys.add(key);
+			node.vals.add(val);
+		}
+		//if (keys.size() == this.fanout) throw new Exception();
+		else {
+			Iterator<Integer> it = node.keys.iterator();
+			
+			while(it.hasNext()) {
+				int n = it.next();
+				if(n > key) {
+					node.keys.add(node.keys.indexOf(n), key);
+					node.vals.add(node.keys.indexOf(n)-1, val);
+					writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+					return ;
+				}
+			}
+			node.keys.add(key);
+			node.vals.add(val);
+		}
+		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
 		
 	}
 	
+	public void splitLeafNode(Node node) throws IOException {
+		if(isLeafNode(node)) { //root이면서 leaf인경우 무조건 leaf생성
+			Node root = new Node(blocksize, ++offset,0); //root로 생성
+			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
+			int keytmp=node.keys.get(node.keys.size()/2);
+			int valtmp=node.vals.get(node.keys.size()/2);
+			
+			//분할
+			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+//					System.out.println("Key Value : "+keys.get(fanout/2));
+				leaf.keys.add(node.keys.get(node.keys.size()/2));
+				leaf.vals.add(node.vals.get(node.keys.size()/2));
+				node.keys.remove(node.keys.size()/2);
+				node.vals.remove(node.vals.size()/2);
+			}
+			node.vals.add(valtmp);
+			//중간 값 root 노드에 저장
+			root.keys.add(keytmp);
+			root.vals.add(node.offset);
+			root.vals.add(leaf.offset);
+			node.status = 2; // leaf로 변경
+			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
+			UpdateNode(node,root,leaf);
+			UpdateMeta(node,root,leaf);	
+		}
+		else {//root일 경우 무조건 Non-leaf생성 
+			Node root = new Node(blocksize, ++offset,0); //root로 생성
+			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
+			int keytmp=node.keys.get(node.keys.size()/2);
+			int valtmp=node.vals.get(node.keys.size()/2);
+			
+			//분할
+			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+//					System.out.println("Key Value : "+keys.get(fanout/2));
+				Nonleaf.keys.add(node.keys.get(node.keys.size()/2));
+				Nonleaf.vals.add(node.vals.get(node.keys.size()/2));
+				node.keys.remove(node.keys.size()/2);
+				node.vals.remove(node.vals.size()/2);
+			}
+			node.vals.add(valtmp);
+			//중간 값 root 노드에 저장
+			root.keys.add(keytmp);
+			root.vals.add(node.offset);
+			root.vals.add(Nonleaf.offset);
+			node.status = 1; // Nonleaf로 변경
+			//노드 파일 업데이트. 
+			writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+			writeToFile(Nfilepath, BufferedIntegerArray(root.keys, root.vals),root.offset*blocksize);
+			writeToFile(Nfilepath, BufferedIntegerArray(Nonleaf.keys, Nonleaf.vals),Nonleaf.offset*blocksize);
+			//루트는 항상 맨위에 8byte만큼 저장
+			writeToFile(filepath, BufferedMetaArray(root.offset, root.status),0);
+			
+		}
+	}
+	
+	public void splitNonLeafNode(Node node) throws IOException{
+		if(isLeafNode(node)) { //leaf일 경우, 무조건 leaf만 생성
+//			Node parent = new Node(int[] array,blocksize,offset, status);
+			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
+			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
+			int valtmp=node.vals.get(node.keys.size()/2);
+			
+			//분할
+			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+//				System.out.println("Key Value : "+keys.get(fanout/2));
+				leaf.keys.add(node.keys.get(node.keys.size()/2)); 
+				leaf.vals.add(node.vals.get(node.keys.size()/2)); 
+				node.keys.remove(node.keys.size()/2);
+				node.vals.remove(node.vals.size()/2);
+			}
+			node.vals.add(valtmp);
+			writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+			//parent에 Tree.insert(Key, Value)
+			//중간 값 root 노드에 저장
+//			parent.keys.add(keytmp);
+//			parent.vals.add(node.offset);
+//			parent.vals.add(leaf.offset);
+//			node.status = 2; // 애초에 leaf노드이기에 변경해줄 필요없음
+			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
+//			UpdateNode(node,parent,leaf);
+//			UpdateMeta(node,parent,leaf); //leaf정보 추가해야함
+			
+//			writeToFile(Nfilepath, BufferedIntegerArray(parent.keys, parent.vals),parent.offset*blocksize);
+			writeToFile(Nfilepath, BufferedIntegerArray(leaf.keys, leaf.vals),leaf.offset*blocksize);
+			writeToFile(filepath, BufferedMetaArray(leaf.offset, leaf.status),leaf.offset*8);
+		}
+		else { //leaf도, root도 아닐 경우(Nonleaf) 무조건 Nonleaf만 생성
+//			Node root = new Node() //상위 Node를 찾아야 한다.
+//			Node parent = new Node(int[] array,blocksize,offset, status);
+			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
+			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
+			int valtmp=node.vals.get(node.keys.size()/2);
+			
+			//분할
+			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+//					System.out.println("Key Value : "+keys.get(fanout/2));
+				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1)); //중간 Key값 이상만 넣기
+				Nonleaf.vals.add(node.vals.get(node.keys.size()/2)); //Value값은 그대로 가져오기.
+				node.keys.remove(node.keys.size()/2);
+				node.vals.remove(node.vals.size()/2);
+			}
+			node.vals.add(valtmp);
+			//중간 값 root 노드에 저장
+//			parent.keys.add(keytmp);
+//			parent.vals.add(node.offset);
+//			parent.vals.add(Nonleaf.offset);
+			node.status = 1; // Nonleaf로 변경
+			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
+//			UpdateNode(node,parent,Nonleaf);
+//			UpdateMeta(node,root,leaf); //Meta파일 수정할 필요가 없음, 
+		}
+	}
+	
+	//status, offset 순으로 저장함
+	public Node searchRoot() throws IOException {
+		int[] offsets = readFromMFile(filepath, 0, 8);
+		int cur_status = offsets[0];
+		int cur_offset = offsets[1];
+		int[] Integers = readFromFile(Nfilepath, cur_offset*blocksize,blocksize);
+		Node node = new Node(Integers, blocksize, cur_offset, cur_status);
+		return node;
+	}
 
 }
 
@@ -178,11 +372,11 @@ class Node {
 	 * 그냥 크기만큼 key, val을 생성 <- 새로운 노드를 만들때 필요 ex) split, write
 	 */
 	
-	
+	//커서 만들기.
 	Node(int[] integers, int blocksize, int offset, int status) {
-		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
-		keys = new ArrayList<>(blocksize / (Integer.BYTES * 2));
-		vals = new ArrayList<>(blocksize / (Integer.BYTES * 2) + 1);
+//		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
+		keys = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2));
+		vals = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2) + 1);
 		
 		this.offset = offset;
 		this.status = status;
@@ -195,236 +389,15 @@ class Node {
 	}
 	
 	Node(int blocksize, int offset, int status) {
-		
+//		blocksize -= 8; 이거 오류 불러 올때마다 -8해버림
+		keys = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2));
+		vals = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2) + 1);
+		this.offset = offset;
+		this.status = status;
 	}
+	
 }
 
-
-
-
-class BTNode {
-
-//	static String path = "./tmp";
-	
-	static int offsets; //노드 생성시 offset값을 변경해주기 위해
-	int fanout; // blocksize를 의미함
-	int blocksize;
-	int offset;//random access시 필요, 
-	
-	List<Integer> keys; //blocksize(fanout) 만큼의 길이
-	List<Integer> vals; // blocksize+1(fanout) 만큼의 길이
-	/* 추상적인 BTNode의 모습
-	 *    |k_1|k_2|k_3|k_4|k_5|...|k_n|		n개의 key linked list
-	 *  |p_1|p_2|p_3|p_4|p_5|...|p_n|p_n+1|	n+1개의 BTNode 주소가 저장된 ArrayList
-	 * */
-	
-	boolean isRoot = false;
-	boolean isFull = false;
-	boolean isLeaf;
-	
-	/*
-	 * 제일 첫 노드 생성시 쓰는 생성자
-	 * root = true
-	 * leaf = true
-	 * full = false
-	 */
-	public BTNode(int fanout) {
-		this.fanout = fanout;
-		this.blocksize = fanout*4;
-		if(offsets ==0) {
-			this.isRoot = true;
-			this.isLeaf = true;
-		}
-		this.keys = new ArrayList<Integer>(fanout);
-		this.vals = new ArrayList<Integer>(fanout+1);
-		this.offset = offsets;
-		offsets++;
-	}
-	/*
-	 * Leaf or non-Leaf 노드를 만든데 쓰는 생성자
-	 */
-//	
-//	public BTNode(int fanout, boolean isLeaf) {
-//		this.fanout = fanout;
-//		this.isLeaf = isLeaf;
-//		this.keys = new ArrayList<>(fanout);
-//		this.vals = new ArrayList<>(fanout+1);
-//	}
-	
-	public boolean isFull() {
-		if(keys.size() == fanout) this.isFull = true;
-		return isFull;
-	}
-	/*
-	 * halfrule을 만족하면 true
-	 * 아니라면 false
-	 */
-	public boolean isHalfRule() { 
-		if(keys.size() > fanout/2) return true;
-		return false;
-	}
-	//노드 상태 확인 root인지 leaf인지 non_leaf인지
-	public int status() {
-		if(isRoot) return 1;
-		else if(isLeaf) return 3;
-		else return 2;
-	}
-	//메타 파일 생성
-		//매번 메타파일 수정해야 함.
-	
-//	
-//	public void DataToNode(int offset) throws IOException {
-//		DataInputStream is = new DataInputStream(
-//				new BufferedInputStream(
-//						new FileInputStream(path+File.separator+"+offset+.data"), blocksize));
-//		ArrayList<Integer> Nkeys = new ArrayList<Integer>();
-//		ArrayList<Integer> Nvals = new ArrayList<Integer>();
-//		try {
-//			Nvals.add(is.readInt());
-//			Nkeys.add(is.readInt());	
-//		}catch(Exception e){
-//			int i;
-//			//노드 파일 읽어 들여오기.
-//			for(i =0 ; i<keys.size(); i++) {
-//				this.keys.set(i, Nkeys.get(i));
-//				this.vals.set(i, Nvals.get(i));
-//			}
-//			this.vals.set(i+1, Nvals.get(i+1));
-//			this.offset = offset;
-//		}
-//		
-//	}
-//	
-//	public void insert(int key, int val) throws IOException  {
-//		if(isLeaf) {
-//			init_insert(key, val);
-//			if(isFull()) {
-//				devide(key,val);
-//			}
-//		}
-//		DataOutputStream os = open_output_stream(path,offset,blocksize);
-//		write_run_file(keys,vals,os);
-//		write_meta_file();
-//	}
-	
-	/*
-	 * node안에서 key값에 해당하는 point를 return
-	 * 이부분은 다시 짜야함
-	 */
-	public void init_insert(int key, int val) {
-		if (keys.size() == 0) {
-			keys.add(key);
-			vals.add(val);
-		}
-		//if (keys.size() == this.fanout) throw new Exception();
-		else {
-			Iterator<Integer> it = keys.iterator();
-			
-			while(it.hasNext()) {
-				int n = it.next();
-				if(n > key) {
-					keys.add(keys.indexOf(n), key);
-					vals.add(vals.indexOf(n), val);
-					break;
-				}
-			}
-			keys.add(key);
-			vals.add(val);
-		}
-	}
-	public static DataOutputStream open_output_stream(String path, int offset, int blocksize) throws IOException {
-		return new DataOutputStream(
-				new BufferedOutputStream(
-						new FileOutputStream(path+File.separator+offset+".data"), blocksize));
-	}
-	//node data file 생성
-	public static void write_run_file(List<Integer> Keys,List<Integer> Vals, DataOutputStream os) throws IOException {
-		System.out.println("Key Array : "+Keys);
-		System.out.println("Val Array : "+Vals);
-		for(int i = 0; i<Keys.size();i++) {
-			os.writeInt(Vals.get(i));
-			os.writeInt(Keys.get(i));	
-		}
-		os.close();
-	}//node 정보 저장 meta file 저장
-//	
-//	public void write_meta_file(BTNode Node) throws IOException{
-//		DataOutputStream os = new DataOutputStream(
-//				new BufferedOutputStream(
-//						new FileOutputStream(path+File.separator+"node.meta",true), blocksize)); //true 주게되면 이어쓰기
-//		int status=Node.status();
-//		System.out.println("Status : "+status);
-//		System.out.println("Node offSet : "+Node.offset);
-//		os.writeInt(Node.offset);
-//		os.writeInt(status);
-//		os.close();
-//	}
-//	public void write_meta_file() throws IOException{
-//		DataOutputStream os = new DataOutputStream(
-//				new BufferedOutputStream(
-//						new FileOutputStream(path+File.separator+"node.meta",true), blocksize)); //true 주게되면 이어쓰기
-//		int status=status();
-//		System.out.println("Status : "+status);
-//		System.out.println("Node offSet : "+offset);
-//		os.writeInt(offset);
-//		os.writeInt(status);
-//		os.close();
-//	}
-//	//Root가 Full일 때 나누는 경우
-//	public void devide(int key, int val) throws IOException{
-//		System.out.println("offset : "+offset);
-//		BTNode root = new BTNode(fanout); //root노드 생성 
-//		DataOutputStream os1 = open_output_stream(path,root.offset,blocksize);
-//		
-//		System.out.println("offset : "+root.offset);
-//		BTNode newest = new BTNode(fanout); //new 노드 생성
-//		DataOutputStream os2 = open_output_stream(path,newest.offset,blocksize);
-//		System.out.println("offset : "+newest.offset);
-//		//중간값 미리 저장
-//		int tmp=keys.get(fanout/2);
-//		
-//		//분할
-//		for(int i =fanout/2; i <= keys.size() ;i++) {
-////			System.out.println("Key Value : "+keys.get(fanout/2));
-//			newest.keys.add(keys.get(fanout/2));
-//			newest.vals.add(vals.get(fanout/2));
-//			keys.remove(fanout/2);
-//			vals.remove(fanout/2);
-//		}
-//		//중간 값 root 노드에 저장
-//		root.keys.add(tmp);
-//		root.vals.add(offset);
-//		root.vals.add(newest.offset);
-//		root.isRoot = true;
-//	
-//		//origin 노드 root 효력 잃음
-//		this.isRoot = false;
-//		//각 노드data 생성
-//		write_run_file(root.keys,root.vals,os1);
-//		write_meta_file(root);
-//		write_run_file(newest.keys,newest.vals,os2);
-//		write_meta_file(newest);
-//		
-//	}
-//	public Integer getkey(int key){ 
-//		
-//		if(key >= keys.get(this.fanout - 1)) return vals.get(this.fanout);
-//		
-//		Iterator<Integer> it = keys.iterator();
-//		int i = 0;
-//		
-//		/*
-//		 * 이부분이문제
-//		 * it.next가 key보다 큰게 나왔을때 i++을 할까 안할까에따라 다름
-//		 */
-//		while((it.next() <= key) && it.hasNext() ){
-//            i++;
-//        }
-//		return vals.get(i);
-//    }
-
-
-}
 
 
 
