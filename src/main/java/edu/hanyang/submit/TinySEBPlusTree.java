@@ -33,11 +33,17 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 	}
 	public static void main(String[] args) throws IOException {
+
 		TinySEBPlusTree Tree = new TinySEBPlusTree();
 		Tree.insert(5, 10);
 		Tree.insert(6, 15);
 		Tree.insert(4, 20);
 		System.out.println("Complete");
+
+		
+		
+		
+		
 	}
 	public static String make_dir(String tmdir, int step) {
 		String path = tmdir+File.separator+String.valueOf(step);
@@ -67,6 +73,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	
 	private static int[] readFromFile(String filePath, int position, int size)
 		throws IOException {
+		
 		RandomAccessFile file = new RandomAccessFile(filePath, "r");
 		file.seek(position);
 		
@@ -225,7 +232,6 @@ public class TinySEBPlusTree implements BPlusTree{
 			node.vals.add(val);
 		}
 		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
-		
 	}
 	
 	public void splitLeafNode(Node node) throws IOException {
@@ -362,6 +368,7 @@ class Node {
 	 * 2 : leaf
 	 */
 	int status; 
+	int max_keys;
 	
 	List<Integer> keys;
 	List<Integer> vals;
@@ -375,25 +382,65 @@ class Node {
 	//커서 만들기.
 	Node(int[] integers, int blocksize, int offset, int status) {
 //		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
-		keys = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2));
-		vals = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2) + 1);
+		
+		int max_keys = (blocksize - 2*Integer.BYTES) / (Integer.BYTES * 2);
+		int max_vals = max_keys + 1;
+		
+		this.max_keys = max_keys;
+		keys = new ArrayList<>(max_keys);
+		vals = new ArrayList<>(max_vals);
 		
 		this.offset = offset;
 		this.status = status;
 		
+		/**/
 		for(int i = 0; i < integers.length / 2; i ++) {
-			
+			vals.add(integers[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+			keys.add(integers[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
 		}
-		
+		vals.add(integers[integers.length-1]);
 		
 	}
 	
 	Node(int blocksize, int offset, int status) {
-//		blocksize -= 8; 이거 오류 불러 올때마다 -8해버림
-		keys = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2));
-		vals = new ArrayList<>(blocksize-8 / (Integer.BYTES * 2) + 1);
+		int max_keys = (blocksize - 2*Integer.BYTES) / (Integer.BYTES * 2);
+		int max_vals = max_keys + 1;
+		
+		this.max_keys = max_keys;
+		keys = new ArrayList<>(max_keys);
+		vals = new ArrayList<>(max_vals);
+		
 		this.offset = offset;
 		this.status = status;
+	}
+	
+	public boolean isFull() {
+		if(keys.size() == this.max_keys) return true;
+		
+		return false;
+	}
+	
+	/*
+	 * insert를 하기전에 full인지 아닌지부터 check*/
+	public void insert(int key, int val) {
+		if (keys.size() == 0) {
+			keys.add(key);
+			vals.add(val);
+			return ;
+		}
+		Iterator<Integer> it = keys.iterator();
+			
+		while(it.hasNext()) {
+			int n = it.next();
+			if(n > key) {
+				keys.add(keys.indexOf(n), key);
+				vals.add(vals.indexOf(n), val);
+				return;
+			}
+		}
+		keys.add(key);
+		vals.add(val);
+		
 	}
 	
 }

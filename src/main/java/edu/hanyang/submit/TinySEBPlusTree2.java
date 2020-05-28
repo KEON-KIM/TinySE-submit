@@ -225,10 +225,7 @@ class BTNodes {
 //		this.vals = new ArrayList<>(fanout+1);
 //	}
 	
-	public boolean isFull() {
-		if(keys.size() == fanout) this.isFull = true;
-		return isFull;
-	}
+	
 	/*
 	 * halfrule을 만족하면 true
 	 * 아니라면 false
@@ -272,7 +269,7 @@ class BTNodes {
 	public void insert(int key, int val) throws IOException  {
 		if(isLeaf) {
 			init_insert(key, val);
-			if(isFull()) {
+			if(isFull) {
 				Split(key,val);
 			}
 		}
