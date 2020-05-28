@@ -15,15 +15,15 @@ import java.io.RandomAccessFile;
 import java.util.*;
 
 public class TinySEBPlusTree implements BPlusTree{
-	String filepath ="./tmp/node.meta";
-	String Nfilepath = "./tmp/node.data";
-	int blocksize=32;
+	static String filepath ="./tmp/node.meta";
+	static String Nfilepath = "./tmp/node.data";
+	static int blocksize=32;
 	int nblocks;
 	List<Integer> history = new ArrayList<Integer>();
 	
 	RandomAccess node_File;
 	RandomAccess meta_File;
-	Node node = new Node(32,0,3); //Cusor Nodes
+	static Node node = new Node(32,0,3); //Cusor Nodes
 	
 	int offset;
 	int node_cur;
@@ -38,8 +38,11 @@ public class TinySEBPlusTree implements BPlusTree{
 		Tree.insert(5, 10);
 		Tree.insert(6, 15);
 		Tree.insert(4, 20);
+		
+		node = searchRoot();
+		System.out.println("Root Keys : "+node.keys);
+		System.out.println("Root Vals : "+node.vals);
 		System.out.println("Complete");
-
 		
 		
 		
@@ -257,7 +260,9 @@ public class TinySEBPlusTree implements BPlusTree{
 			node.status = 2; // leaf로 변경
 			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
 			UpdateNode(node,root,leaf);
-			UpdateMeta(node,root,leaf);	
+			writeToFile(filepath, BufferedMetaArray(node.offset, node.status),8);
+			writeToFile(filepath, BufferedMetaArray(root.offset, root.status),0);
+			writeToFile(filepath, BufferedMetaArray(leaf.offset, leaf.status),leaf.offset*8);
 		}
 		else {//root일 경우 무조건 Non-leaf생성 
 			Node root = new Node(blocksize, ++offset,0); //root로 생성
@@ -348,13 +353,31 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	
 	//status, offset 순으로 저장함
-	public Node searchRoot() throws IOException {
+	public static Node searchRoot() throws IOException {
 		int[] offsets = readFromMFile(filepath, 0, 8);
 		int cur_status = offsets[0];
 		int cur_offset = offsets[1];
 		int[] Integers = readFromFile(Nfilepath, cur_offset*blocksize,blocksize);
 		Node node = new Node(Integers, blocksize, cur_offset, cur_status);
 		return node;
+	}
+	//leaf 찾기
+	public Node searchLeaf( int key, int val)throws IOException {
+		int find_offset = 0;
+		for(int i=0;i<node.keys.size();i++) { //현재 Cur_node
+			if(key<node.keys.get(i)) {
+				find_offset = node.vals.get(i);
+			}
+			else {
+				find_offset = node.vals.get(node.vals.size()-1);
+			}
+		}
+		int[] integers = readFromFile(Nfilepath, find_offset*blocksize, blocksize);
+		Node node = new Node(integers, blocksize, find_offset, 1);
+		history.add(find_offset);
+		
+		return node;
+		
 	}
 
 }
@@ -392,13 +415,17 @@ class Node {
 		
 		this.offset = offset;
 		this.status = status;
-		
+		int i;
 		/**/
-		for(int i = 0; i < integers.length / 2; i ++) {
-			vals.add(integers[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
-			keys.add(integers[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+		for(i = 0; i < integers.length / 2; i ++) {
+			if(integers[i*2]==-1||integers[i*2+1]==-1) {
+			}
+			else {
+				vals.add(integers[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+				keys.add(integers[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+			}
 		}
-		vals.add(integers[integers.length-1]);
+		vals.add(integers[i/2]);
 		
 	}
 	
