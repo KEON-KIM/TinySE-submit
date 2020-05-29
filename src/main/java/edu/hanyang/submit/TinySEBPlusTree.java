@@ -106,25 +106,43 @@ public class TinySEBPlusTree implements BPlusTree{
 		writeToFile(metapath, meta_buffer, offset); // meta.data
 		
 		int cur = 1; // init node의 offset = 1
-//		while(is.available() != 0) {
-//			int key = is.readInt();
-//			int val = is.readInt();
-//			
-//			
-//			
-//			/* case 1. 들어갈 leafnode가 full인 경우
-//			 *    - splitleafnode
-//			 *        - cur node 
-//			 *        - 
-//			 *        - 부모노드가 full인 경우
-//			 *            -splienonleafnode
-//			 *            
-//			 *        - 부모노드가 full이 아닌 경우
-//			 *            - cur = 부모노드
-//			 *            - cur node에 insert(key, )
-//			 * case 2. 들어갈 leafnode가 full이 아닐 경우
-//			 *     - cur node에 insert(key, val)*/
-//		}
+		while(is.available() != 0) {
+			int key = is.readInt();
+			int val = is.readInt();
+			
+			
+			
+			/* case 1. 들어갈 leafnode가 full인 경우
+			 *    - splitleafnode(cur)
+			 *        - cur node [curnode.vals.size()/2] 부터 끝까지 복사해서 buffer에 넣고 그부분 제거
+			 *        - writetofile(cur, tree.data)
+			 *        - cur node <= 새로만든 leaf node의 offset
+			 *        - cur node에 buffer넣기
+			 *        - writetofile(cur, tree.data)
+			 *        - writetofile(cur, meta.data)
+			 *        - piv = 부모노드에 올라갈 (key, curnode offset)
+			 *        - cur <= 부모노드
+			 *        case1-1 부모노드가 full인 경우
+			 *        	- splitnonleafnode(cur)
+			 *        	- cur node [curnode.vals.size()/2] 부터 끝까지 복사해서 buffer에 넣고 그 부분 제거
+			 *        	- writetofile(cur, tree)
+			 *        	- writetofile(cur, meta)
+			 *        	- cur node <= 새로만든 leaf node의 offset
+			 *        	- cur node에 buffer 넣기
+			 *        	- writetofile(cur, tree)
+			 *        	- writetofile(cur, meta)
+			 *        	- piv = 부모노드에 올라갈 (key, curnode offset)
+			 *        	- cur <= 부모노드
+			 *        	재귀들어가는부분()
+			 *        case1-2 부모노드가 full이 아닌 경우
+			 *            - cur node에 insert piv
+			 *            - write
+			 * case 2. 들어갈 leafnode가 full이 아닐 경우
+			 *     - cur node에 insert(key, val)
+			 *     - writetoFile(cur, tree)
+			 *     */
+				
+		}
 		
 		
 	}
