@@ -147,36 +147,26 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 	}
 	public static void main(String[] args) throws IOException {
-		init();
-		TinySEBPlusTree tree = new TinySEBPlusTree();
-//		tree.insert(5, 10);
-//		tree.insert(6, 15);
-//		tree.insert(4, 20);
-//		
-//		node = searchRoot();
-//		System.out.println("Root Keys : "+node.keys);
-//		System.out.println("Root Vals : "+node.vals);
-//		System.out.println("Complete");
 		
 		TinySEBPlusTree Tree = new TinySEBPlusTree();
 		System.out.println("Starting");
 		System.out.println("Root Keys : "+node.keys);
 		System.out.println("Root Vals : "+node.vals);
 		Tree.insert(5, 10);
+//		System.out.println("Histroy : "+history);
 		Tree.insert(6, 15);
+//		System.out.println("Histroy : "+history);
 		Tree.insert(4, 20);
+//		System.out.println("Histroy : "+history);
 		Tree.insert(7, 1);
+//		System.out.println("Histroy : "+history);
+//		Tree.insert(17, 7);
+//		Tree.insert(30, 8);
 		
-//		node = searchRoot();
-//		System.out.println("Root Keys : "+node.keys);
-//		System.out.println("Root Vals : "+node.vals);
-//		System.out.println("Root Search Complete");
-//		node = searchLeaf(6,15);
-//		System.out.println("leaf Keys : "+node.keys);
-//		System.out.println("leaf Vals : "+node.vals);
-//		System.out.println("history : "+history);
-//		System.out.println("Complete");
+		
+		
 	}
+	
 		
 		
 	public static String make_dir(String tmdir, int step) {
@@ -213,12 +203,12 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		int[] integers = new int[size/Integer.BYTES];
 
-		System.out.print("Integers : [ ");
+//		System.out.print("Integers : [ ");
 		for(int i = 0; i < integers.length; i++) {
 			integers[i] = file.readInt();
-			System.out.print(integers[i]+",");
+//			System.out.print(integers[i]+",");
 		}
-		System.out.println("]");
+//		System.out.println("]");
 		file.close();
 		return integers;
 	}
@@ -255,6 +245,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	@Override
 	public void insert(int key, int val) throws IOException{
 		if(!isRootNode(node)) {
+			System.out.println("Not Root");
 			node = searchRoot();
 			if(!isLeafNode(node)) {
 				node = searchLeaf(key,val);
@@ -262,36 +253,36 @@ public class TinySEBPlusTree implements BPlusTree{
 			//node초기화
 		}
 		init_insert(node, key, val);
-		if(isFull(node)) {
-			if(isRootNode(node)) {
-				System.out.println("Node is Full");
-				splitLeafNode(node);
-			}
-			else {
-				System.out.println("Node is Full");
-				splitNonLeafNode(node);
-			}
-		}//아닐 때
+		inserting(node);
+		
 		
 		//node 변경하기
 //		int[] Array = new int[1];
 //		node = new Node(Array, blocksize, 2,0);
 	}
+	public static void inserting(Node node) throws IOException{
+		System.out.println("Current Node keys: "+node.keys);
+		System.out.println("Current Node vals: "+node.vals);
+		System.out.println("Current Node status: "+node.status);
+		if(isFull(node)) {
+			if(isRootNode(node)) {
+				System.out.println("Node is Full1");
+				splitLeafNode(node);
+			}
+			else {
+				System.out.println("Node is Full2");
+				splitNonLeafNode(node);
+			}
+		}
+	}
 	//node = origin, root = new, leaf = new
 	public static void UpdateNode(Node node, Node parent, Node child) throws IOException{
 		//root일경우, root노드leaf노드(init경우) 같음
-		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
-		writeToFile(Nfilepath, BufferedIntegerArray(parent.keys, parent.vals),parent.offset*blocksize);
-		writeToFile(Nfilepath, BufferedIntegerArray(child.keys, child.vals),child.offset*blocksize);
+		writeToFile(Nfilepath, node.to_buffer(),node.offset*blocksize);
+		writeToFile(Nfilepath, parent.to_buffer(),parent.offset*blocksize);
+		writeToFile(Nfilepath, child.to_buffer(),child.offset*blocksize);
 	}
 	//node = Origin, newnode = new
-	public static void UpdateMeta(Node node, Node parent, Node child) throws IOException {
-	 //init시  모두 leaf혹은 root이므로 모두 meta파일에 저장해야함.
-		writeToFile(filepath, BufferedMetaArray(node.offset, node.status),node.offset*8);
-		writeToFile(filepath, BufferedMetaArray(parent.offset, parent.status),parent.offset*8);
-		writeToFile(filepath, BufferedMetaArray(child.offset, child.status),child.offset*8);
-	}
-
 	@Override
 	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
 		
@@ -317,34 +308,6 @@ public class TinySEBPlusTree implements BPlusTree{
 		if(node.keys.size() == (blocksize-8)/(Integer.BYTES*2)) return true;
 		return false;
 	}
-	//Node파일에 저장시킬 Integer Array생성
-	public static int[] BufferedIntegerArray(List<Integer> keys, List<Integer> vals) {
-		int[] Array= new int[(blocksize-Integer.BYTES) / Integer.BYTES];
-		int i = 0;
-		System.out.println("Keys : "+keys);
-		System.out.println("Vals : "+vals);
-		for( i = 0; i < keys.size(); i++) {
-			Array[i*2] = vals.get(i);
-			Array[i*2+1] = keys.get(i);
-		}
-		//Error 때문에 임시방편 ㅠ
-		if(i+1==vals.size()) {
-			Array[i*2] = vals.get(i);
-		}
-		//padding
-		for(int j = keys.size() * 2+1  ; j < Array.length; j++) {
-			Array[j] = -1;
-		}
-		
-		System.out.print("Array : [");
-		for(int k = 0; k < Array.length; k++) {
-			System.out.print(" "+Array[k]+",");
-		}
-		System.out.println("]");
-		
-		return Array;
-	}
-	//Mata파일 저장시킬 Integer Array 생성
 	public static int[] BufferedMetaArray(int offset, int status) {
 		int[] Array= new int[2];
 		Array[0] = status;
@@ -354,7 +317,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	
 	
-	public void init_insert(Node node, int key, int val) throws IOException{
+	public static void init_insert(Node node, int key, int val) throws IOException{
 		if (node.keys.size() == 0) {
 			node.keys.add(key);
 			node.vals.add(val);
@@ -368,19 +331,28 @@ public class TinySEBPlusTree implements BPlusTree{
 				if(n > key) {
 					node.keys.add(node.keys.indexOf(n), key);
 					node.vals.add(node.keys.indexOf(n)-1, val);
-					writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+					writeToFile(Nfilepath, node.to_buffer(),node.offset*blocksize);
 					return ;
 				}
 			}
 			node.keys.add(key);
 			node.vals.add(val);
 		}
-		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+		writeToFile(Nfilepath, node.to_buffer(),node.offset*blocksize);
 	}
-	
+	public static void PrintNodeTest(Node node, Node parent, Node child) {
+		System.out.println("node Keys : "+node.keys);
+		System.out.println("node Vals : "+node.vals);
+		
+		System.out.println("root Keys : "+parent.keys);
+		System.out.println("root Vals : "+parent.vals);
+		
+		System.out.println("leaf Keys : "+child.keys);
+		System.out.println("leaf Vals : "+child.vals);
+	}
 	public static void splitLeafNode(Node node) throws IOException {
-	
-		if(isLeafNode(node)) { //root이면서 leaf인경우 무조건 leaf생성
+		if(isLeafNode(node)) { 
+			System.out.println("Select #2 : init");//root이면서 leaf인경우 무조건 leaf생성
 			Node root = new Node(blocksize, ++offset,0); //root로 생성
 			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
 			int keytmp=node.keys.get(node.keys.size()/2);
@@ -400,22 +372,26 @@ public class TinySEBPlusTree implements BPlusTree{
 			root.vals.add(node.offset);
 			root.vals.add(leaf.offset);
 			node.status = 2; // leaf로 변경
+			PrintNodeTest(node,root,leaf);
 			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
+			
 			UpdateNode(node,root,leaf);
-			writeToFile(filepath, BufferedMetaArray(node.offset, node.status),8);
-			writeToFile(filepath, BufferedMetaArray(root.offset, root.status),0);
-			writeToFile(filepath, BufferedMetaArray(leaf.offset, leaf.status),leaf.offset*8);
+			//메타 파일 업데이트.
+			writeToFile(filepath, node.to_meta_buffer(),node.offset*8);
+			writeToFile(filepath, root.to_meta_buffer(),0);
+			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
 		}
 		else {//root일 경우 무조건 Non-leaf생성 
+			System.out.println("Select #2 : root");
 			Node root = new Node(blocksize, ++offset,0); //root로 생성
 			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
 			int keytmp=node.keys.get(node.keys.size()/2);
 			int valtmp=node.vals.get(node.keys.size()/2);
 			
 			//분할
-			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
 //					System.out.println("Key Value : "+keys.get(fanout/2));
-				Nonleaf.keys.add(node.keys.get(node.keys.size()/2));
+				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1));
 				Nonleaf.vals.add(node.vals.get(node.keys.size()/2));
 				node.keys.remove(node.keys.size()/2);
 				node.vals.remove(node.vals.size()/2);
@@ -426,24 +402,27 @@ public class TinySEBPlusTree implements BPlusTree{
 			root.vals.add(node.offset);
 			root.vals.add(Nonleaf.offset);
 			node.status = 1; // Nonleaf로 변경
+			PrintNodeTest(node,root,Nonleaf);
 			//노드 파일 업데이트. 
-			writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
-			writeToFile(Nfilepath, BufferedIntegerArray(root.keys, root.vals),root.offset*blocksize);
-			writeToFile(Nfilepath, BufferedIntegerArray(Nonleaf.keys, Nonleaf.vals),Nonleaf.offset*blocksize);
+			UpdateNode(node, root, Nonleaf);
 			//루트는 항상 맨위에 8byte만큼 저장
-			writeToFile(filepath, BufferedMetaArray(root.offset, root.status),0);
+			writeToFile(filepath, root.to_meta_buffer(),0);
 			
 		}
 	}
 	
 	public static void splitNonLeafNode(Node node) throws IOException{
-		System.out.println("Parent! Nonleaf!");
 		if(isLeafNode(node)) { //leaf일 경우, 무조건 leaf만 생성
-			int[] integers = readFromFile(Nfilepath, history.get(history.size()-1)*blocksize, blocksize);
-			Node parent = new Node(integers,blocksize,history.get(history.size()-1), 1); //parent node생성 leaf parent = non leaf
+			System.out.println("Select #3");
+			int cur=history.size()-1;
+			int[] integers = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
+			int cur_status=1;
+			if (history.size() ==1) cur_status=0;
+			Node parent = new Node(integers,blocksize,history.get(cur), cur_status); //parent node생성 leaf parent = non leaf
 			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
 			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
 			int valtmp=node.vals.get(node.keys.size()/2);
+			history.remove(cur); //사용 offset은 삭제시키기
 			
 			//분할
 			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
@@ -453,34 +432,35 @@ public class TinySEBPlusTree implements BPlusTree{
 				node.keys.remove(node.keys.size()/2);
 				node.vals.remove(node.vals.size()/2);
 			}
+			
 			node.vals.add(valtmp);
+			node.status = 1;//leaf변경
+			
 			parent.keys.add(keytmp);
 			parent.vals.add(leaf.offset);
-			writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
-			writeToFile(Nfilepath, BufferedIntegerArray(parent.keys, parent.vals),parent.offset*blocksize);
-			writeToFile(Nfilepath, BufferedIntegerArray(leaf.keys, leaf.vals),leaf.offset*blocksize);
-			writeToFile(filepath, BufferedMetaArray(leaf.offset, leaf.status),leaf.offset*8);
-			//parent에 Tree.insert(Key, Value)
-			//중간 값 root 노드에 저장
-//			parent.keys.add(keytmp);
-//			parent.vals.add(node.offset);
-//			parent.vals.add(leaf.offset);
-//			node.status = 2; // 애초에 leaf노드이기에 변경해줄 필요없음
-			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
-//			UpdateNode(node,parent,leaf);
-//			UpdateMeta(node,parent,leaf); //leaf정보 추가해야함
+			inserting(parent);
+//			insert(parent, keytmp,leaf.offset);
+			PrintNodeTest(node,parent,leaf);
+			UpdateNode(node,parent,leaf);
+			//Update Meta
+			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
 			
-//			writeToFile(Nfilepath, BufferedIntegerArray(parent.keys, parent.vals),parent.offset*blocksize);
 		}
 		else { //leaf도, root도 아닐 경우(Nonleaf) 무조건 Nonleaf만 생성
-//			Node root = new Node() //상위 Node를 찾아야 한다.
-//			Node parent = new Node(int[] array,blocksize,offset, status);
+			System.out.println("Select #4");
+			System.out.println("History : "+history);
+			int cur =history.size()-1;
+			int[] NodeBuffer = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
+			int[] MetaBuffer= readFromMeta(filepath,history.get(cur)*8,8);
+			Node parent = new Node(NodeBuffer,blocksize,history.get(cur), MetaBuffer[0]); //parent node생성 leaf parent = non leaf
+			System.out.println("Current Node Status : "+MetaBuffer[0]);
+			System.out.println("Current Node Offset : "+MetaBuffer[1]);
 			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
 			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
 			int valtmp=node.vals.get(node.keys.size()/2);
-			
+			history.remove(cur);
 			//분할
-			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
 //					System.out.println("Key Value : "+keys.get(fanout/2));
 				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1)); //중간 Key값 이상만 넣기
 				Nonleaf.vals.add(node.vals.get(node.keys.size()/2)); //Value값은 그대로 가져오기.
@@ -488,14 +468,14 @@ public class TinySEBPlusTree implements BPlusTree{
 				node.vals.remove(node.vals.size()/2);
 			}
 			node.vals.add(valtmp);
-			//중간 값 root 노드에 저장
-//			parent.keys.add(keytmp);
-//			parent.vals.add(node.offset);
-//			parent.vals.add(Nonleaf.offset);
-			node.status = 1; // Nonleaf로 변경
-			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
-//			UpdateNode(node,parent,Nonleaf);
-//			UpdateMeta(node,root,leaf); //Meta파일 수정할 필요가 없음, 
+			
+			parent.keys.add(keytmp);
+			parent.vals.add(Nonleaf.offset);
+			inserting(parent);
+			
+			PrintNodeTest(node,parent,Nonleaf);
+			UpdateNode(node,parent,Nonleaf);
+//			history.remove(cur);
 		}
 	}
 	
@@ -504,8 +484,11 @@ public class TinySEBPlusTree implements BPlusTree{
 		int[] offsets = readFromMeta(filepath, 0, 8);
 		int cur_status = offsets[0];
 		int cur_offset = offsets[1];
+		System.out.println("what the offset? : "+ cur_offset);
 		int[] Integers = readFromFile(Nfilepath, cur_offset*blocksize,blocksize);
 		Node node = new Node(Integers, blocksize, cur_offset, cur_status);
+		System.out.println("find root : "+ node.keys);
+		System.out.println("find root : "+ node.vals);
 		return node;
 	}
 	//leaf 찾기
@@ -521,7 +504,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 		int[] Status = readFromMeta(filepath,find_offset*8,8);
 		if(Status[0]==2) {
-			int[] Nodes = readFromFile(Nfilepath, find_offset*blocksize, blocksize);
+			int[] Nodes = readFromFile(Nfilepath, find_offset*blocksize, blocksize-1);
 			Node node = new Node(Nodes, blocksize, find_offset, Status[0]);
 			
 			return node;
@@ -572,12 +555,11 @@ class Node {
 		this.status = status;
 		int i;
 		for(i = 0; i < buffer.length / 2; i ++) {
-			if(buffer[i*2+1]<=0||buffer[i*2]<=0) break;
+			if(buffer[i*2+1]==0||buffer[i*2]==0) break;
 			vals.add(buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
 			keys.add(buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
 		}
 		if(buffer[i*2]!=0)vals.add(buffer[i*2]);
-		System.out.println("integers size : "+buffer.length);
 	}
 	
 	Node(int blocksize, int offset, int status) {
@@ -628,15 +610,25 @@ class Node {
 	 * keys, vals를 int 배열 buffer로 만들기*/
 	public int[] to_buffer() {
 		int[] buffer = new int[max_keys * 2 + 1];
-		for(int i = 0; i < this.keys.size(); i++) {
+		int i;
+		for(i = 0; i < this.keys.size(); i++) {
 			buffer[i*2] = this.vals.get(i);
 			buffer[i*2 + 1] = this.keys.get(i);
 		}
-		buffer[keys.size()*2] = this.vals.indexOf(keys.size());
-		
+		if(i+1==vals.size()) {
+			buffer[i*2] = this.vals.get(i);
+		}
 		return buffer;
 	}
 	
+	
+	public int[] to_meta_buffer() {
+		int[] buffer = new int[2];
+		buffer[0]=this.status;
+		buffer[1] = this.offset;
+		
+		return buffer;
+	}
 	
 }
 
