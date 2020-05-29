@@ -106,6 +106,8 @@ public class TinySEBPlusTree implements BPlusTree{
 		writeToFile(metapath, meta_buffer, offset); // meta.data
 		
 		int cur = 1; // init node의 offset = 1
+		
+		
 		while(is.available() != 0) {
 			int key = is.readInt();
 			int val = is.readInt();
@@ -166,25 +168,16 @@ public class TinySEBPlusTree implements BPlusTree{
 		int nblocks = 1000;
 		
 		make_tmp(tmpdir);
+		long timestamp = System.currentTimeMillis();
 		tree.make_tree(filepath, treepath, metapath, blocksize, nblocks);
+		System.out.println("make tree time cost : " + (System.currentTimeMillis() - timestamp));
+		
+		int[] tree_buffer = readFromFile(treepath, 0, 2048);
+		int[] meta_buffer = readFromMFile(metapath, 0, 8);
+		
+		Node node = new Node(tree_buffer, meta_buffer, blocksize);
 		
 		
-		DataInputStream tis = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream(treepath), blocksize)
-					);
-
-		DataInputStream mis = new DataInputStream(
-				new BufferedInputStream(
-					new FileInputStream(metapath), blocksize)
-					);
-		
-		System.out.println("tis available size : " + tis.available());
-		
-		tis.read();
-		while(tis.available() != 0) {
-			System.out.println(tis.readInt());
-		}
 		
 		
 		
@@ -223,7 +216,8 @@ public class TinySEBPlusTree implements BPlusTree{
 		RandomAccessFile file = new RandomAccessFile(filePath, "r");
 		file.seek(position);
 		
-		int[] integers = new int[size/Integer.BYTES];
+		file.read();
+		int[] integers = new int[size/Integer.BYTES - 1];
 		for(int i = 0; i < integers.length; i++) {
 			integers[i] = file.readInt();
 		}
@@ -235,6 +229,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		throws IOException {
 		RandomAccessFile file = new RandomAccessFile(filePath, "r");
 		file.seek(position);
+		file.read();
 		int[] integers = new int[size/Integer.BYTES];
 		for(int i = 0; i < integers.length; i++) {
 			integers[i] = file.readInt();
@@ -552,7 +547,7 @@ class Node {
 	 */
 	
 	//커서 만들기.
-	Node(int[] buffer, int blocksize, int offset, int status) {
+	Node(int[] tree_buffer, int blocksize, int offset, int status) {
 //		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
 		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
 		int max_vals = max_keys + 1;
@@ -565,15 +560,15 @@ class Node {
 		this.status = status;
 		int i;
 		/**/
-		for(i = 0; i < buffer.length / 2; i ++) {
-			if(buffer[i*2]==-1||buffer[i*2+1]==-1) {
+		for(i = 0; i < tree_buffer.length / 2; i ++) {
+			if(tree_buffer[i*2]==-1||tree_buffer[i*2+1]==-1) {
 			}
 			else {
-				vals.add(buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
-				keys.add(buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+				vals.add(tree_buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+				keys.add(tree_buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
 			}
 		}
-		vals.add(buffer[i/2]);
+		vals.add(tree_buffer[i/2]);
 		
 	}
 	
@@ -587,6 +582,43 @@ class Node {
 		
 		this.offset = offset;
 		this.status = status;
+	}
+	
+	Node(int[] tree_buffer, int[] meta_buffer, int blocksize) {
+//		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
+		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
+		int max_vals = max_keys + 1;
+		
+		this.max_keys = max_keys;
+		keys = new ArrayList<>(max_keys);
+		vals = new ArrayList<>(max_vals);
+		
+		this.status = meta_buffer[0];
+		this.offset = meta_buffer[1];
+		int i;
+		/**/
+		for(i = 0; i < tree_buffer.length / 2; i ++) {
+			if(tree_buffer[i*2]==-1||tree_buffer[i*2+1]==-1) {
+			}
+			else {
+				vals.add(tree_buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+				keys.add(tree_buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+			}
+		}
+		vals.add(tree_buffer[i/2]);
+		
+	}
+	
+	Node(int[] meta_buffer, int blocksize) {
+		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
+		int max_vals = max_keys + 1;
+		
+		this.max_keys = max_keys;
+		keys = new ArrayList<>(max_keys);
+		vals = new ArrayList<>(max_vals);
+		
+		this.status = meta_buffer[0];
+		this.offset = meta_buffer[1];
 	}
 	
 	public boolean isFull() {
@@ -642,7 +674,15 @@ class Node {
 	}
 	
 	public int get_point(int key){ 
+		Iterator<Integer> it = this.keys.iterator();
+		while(it.hasNext()) {
+			int n = it.next();
+			if(n > key) {
+				return this.vals.get(this.keys.indexOf(n));
+			}
+		}
 		
+		return this.vals.get(vals.size() - 1);
 	}
 	
 	
