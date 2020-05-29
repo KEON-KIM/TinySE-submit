@@ -95,7 +95,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		
 		/* node의 keys, vals를 buffer에 담아서 meta.data, tree.data에 write*/
-		int[] tree_buffer = node.to_buffer();
+		int[] tree_buffer = node.to_tree_buffer();
 		int[] meta_buffer = new int[2];
 		int offset = 1;
 		int status = 3;
@@ -373,14 +373,16 @@ public class TinySEBPlusTree implements BPlusTree{
 				if(n > key) {
 					node.keys.add(node.keys.indexOf(n), key);
 					node.vals.add(node.keys.indexOf(n)-1, val);
-					writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+//					writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+					writeToFile(Nfilepath, node.to_tree_buffer(),node.offset*blocksize);
 					return ;
 				}
 			}
 			node.keys.add(key);
 			node.vals.add(val);
 		}
-		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+//		writeToFile(Nfilepath, BufferedIntegerArray(node.keys, node.vals),node.offset*blocksize);
+		writeToFile(Nfilepath, node.to_tree_buffer(),node.offset*blocksize);
 	}
 	
 	
@@ -621,7 +623,7 @@ class Node {
 	}
 	/*
 	 * keys, vals를 int 배열 buffer로 만들기*/
-	public int[] to_buffer() {
+	public int[] to_tree_buffer() {
 		int[] buffer = new int[max_keys * 2 + 1];
 		for(int i = 0; i < this.keys.size(); i++) {
 			buffer[i*2] = this.vals.get(i);
@@ -631,6 +633,18 @@ class Node {
 		
 		return buffer;
 	}
+	public int[] to_meta_buffer() {
+		int[] buffer = new int[2];
+		buffer[0] = this.offset;
+		buffer[1] = this.status;
+		
+		return buffer;
+	}
+	
+	public int get_point(int key){ 
+		
+	}
+	
 	
 	
 }
