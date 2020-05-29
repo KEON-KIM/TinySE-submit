@@ -1,0 +1,7 @@
+# : comments
+
+
+# ignore datafile
+*.dat
+
+.DS_Store

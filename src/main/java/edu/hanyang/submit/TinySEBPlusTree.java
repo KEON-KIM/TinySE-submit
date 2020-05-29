@@ -28,12 +28,136 @@ public class TinySEBPlusTree implements BPlusTree{
 	static int offset=1;
 	int node_cur;
 	
+	/*이부분은 tmp 파일 비우는 용도*/
+	public static void clean(String dir) {
+		File file = new File(dir);
+		File[] tmpFiles = file.listFiles();
+		if (tmpFiles != null) {
+			for (int i = 0; i < tmpFiles.length; i++) {
+				if (tmpFiles[i].isFile()) {
+					tmpFiles[i].delete();
+				} else {
+					clean(tmpFiles[i].getAbsolutePath());
+				}
+				tmpFiles[i].delete();
+			}
+			file.delete();
+		}
+	}
+	public static void init() {
+		clean("./tmp");
+		File treefile = new File("./tree.data");
+		File metafile = new File("./meta.data");
+		if(treefile.exists()) {
+			treefile.delete();
+		}
+		if(metafile.exists()) {
+			metafile.delete();
+		}
+	}
 	
-	public static void make_node(String filepath, int blocksize, int nblocks) {
+	
+	/*
+	 * 1. input stream open
+	 * 2. 첫 blocksize 만큼의 data get*/
+	public static void make_tree(String filepath, String treepath, String metapath, int blocksize, int nblocks) throws IOException {
+//		blocksize -= 8;
+		DataInputStream is = new DataInputStream(
+								new BufferedInputStream(
+									new FileInputStream(filepath), blocksize)
+									);
+		
+		Node node = new Node(blocksize, 1, 3);
+		/*
+		 * ex) blocksize = 1024 ==> 총 256개의 숫자 받을 수 있음
+		 *     그중 숫자 255개 받기
+		 *     blocksize - Integer.BYTES*/
+		
+		/*한 노드에 들어갈 Integer 갯수*/
+		int num_integer = (blocksize / Integer.BYTES) - 1;
+		
+		
+		
+		/* 첫 노드
+		 * key : num_integer
+		 * val : num_integer
+		 *   | k1 | k2 | k3 | ... | kn |
+		 * | p1 | p2 | p3 | ...| pn | -1 |
+		 * 마지막 val에 -1 들어감*/
+		
+		for(int i = 0; i < num_integer / 2; i++) {
+			int key = is.readInt();
+			int val = is.readInt();
+			node.insert(key, val);
+			
+		}
+		node.vals.add(-1);
+		
+		
+		/* node의 keys, vals를 buffer에 담아서 meta.data, tree.data에 write*/
+		int[] tree_buffer = node.to_buffer();
+		int[] meta_buffer = new int[2];
+		int offset = 1;
+		int status = 3;
+		meta_buffer[0] = offset;
+		meta_buffer[1] = status;
+		
+		writeToFile(treepath, tree_buffer, offset); // tree.data
+		writeToFile(metapath, meta_buffer, offset); // meta.data
+		
+		int cur = 1; // init node의 offset = 1
+		while(is.available() != 0) {
+			int key = is.readInt();
+			int val = is.readInt();
+			
+			
+			
+			/* case 1. 들어갈 leafnode가 full인 경우
+			 *    - splitleafnode(cur)
+			 *        - cur node [curnode.vals.size()/2] 부터 끝까지 복사해서 buffer에 넣고 그부분 제거
+			 *        - writetofile(cur, tree.data)
+			 *        - cur node <= 새로만든 leaf node의 offset
+			 *        - cur node에 buffer넣기
+			 *        - writetofile(cur, tree.data)
+			 *        - writetofile(cur, meta.data)
+			 *        - piv = 부모노드에 올라갈 (key, curnode offset)
+			 *        - cur <= 부모노드
+			 *        case1-1 부모노드가 full인 경우
+			 *        	- splitnonleafnode(cur)
+			 *        	- cur node [curnode.vals.size()/2] 부터 끝까지 복사해서 buffer에 넣고 그 부분 제거
+			 *        	- writetofile(cur, tree)
+			 *        	- writetofile(cur, meta)
+			 *        	- cur node <= 새로만든 leaf node의 offset
+			 *        	- cur node에 buffer 넣기
+			 *        	- writetofile(cur, tree)
+			 *        	- writetofile(cur, meta)
+			 *        	- piv = 부모노드에 올라갈 (key, curnode offset)
+			 *        	- cur <= 부모노드
+			 *        	재귀들어가는부분()
+			 *        case1-2 부모노드가 full이 아닌 경우
+			 *            - cur node에 insert piv
+			 *            - write
+			 * case 2. 들어갈 leafnode가 full이 아닐 경우
+			 *     - cur node에 insert(key, val)
+			 *     - writetoFile(cur, tree)
+			 *     */
+				
+		}
+		
 		
 	}
 	public static void main(String[] args) throws IOException {
-
+		init();
+		TinySEBPlusTree tree = new TinySEBPlusTree();
+//		tree.insert(5, 10);
+//		tree.insert(6, 15);
+//		tree.insert(4, 20);
+//		
+//		node = searchRoot();
+//		System.out.println("Root Keys : "+node.keys);
+//		System.out.println("Root Vals : "+node.vals);
+//		System.out.println("Complete");
+		
 		TinySEBPlusTree Tree = new TinySEBPlusTree();
 		System.out.println("Starting");
 		System.out.println("Root Keys : "+node.keys);
@@ -52,11 +176,9 @@ public class TinySEBPlusTree implements BPlusTree{
 //		System.out.println("leaf Vals : "+node.vals);
 //		System.out.println("history : "+history);
 //		System.out.println("Complete");
-		
-		
-		
-		
 	}
+		
+		
 	public static String make_dir(String tmdir, int step) {
 		String path = tmdir+File.separator+String.valueOf(step);
 		File Folder = new File(path);
@@ -70,6 +192,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 		return path;
 	}
+	
 	public static void make_tmp(String tmdir) {
 		File Folder = new File(tmdir);
 
@@ -99,7 +222,8 @@ public class TinySEBPlusTree implements BPlusTree{
 		file.close();
 		return integers;
 	}
-	private static int[] readFromMFile(String filePath, int position, int size)
+	
+	private static int[] readFromMeta(String filePath, int position, int size)
 		throws IOException {
 		RandomAccessFile file = new RandomAccessFile(filePath, "r");
 		file.seek(position);
@@ -228,6 +352,8 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		return Array;
 	}
+	
+	
 	public void init_insert(Node node, int key, int val) throws IOException{
 		if (node.keys.size() == 0) {
 			node.keys.add(key);
@@ -253,6 +379,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	
 	public static void splitLeafNode(Node node) throws IOException {
+	
 		if(isLeafNode(node)) { //root이면서 leaf인경우 무조건 leaf생성
 			Node root = new Node(blocksize, ++offset,0); //root로 생성
 			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
@@ -374,7 +501,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	
 	//status, offset 순으로 저장함
 	public static Node searchRoot() throws IOException {
-		int[] offsets = readFromMFile(filepath, 0, 8);
+		int[] offsets = readFromMeta(filepath, 0, 8);
 		int cur_status = offsets[0];
 		int cur_offset = offsets[1];
 		int[] Integers = readFromFile(Nfilepath, cur_offset*blocksize,blocksize);
@@ -392,7 +519,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		if(find_offset == 0) {//keys를 돌고 작은 값을 찾지 못하면 find_offset은 0 마지막 value값 참조해야함
 			find_offset = node.vals.get(node.vals.size()-1); //Vals중 가장 우측 값
 		}
-		int[] Status = readFromMFile(filepath,find_offset*8,8);
+		int[] Status = readFromMeta(filepath,find_offset*8,8);
 		if(Status[0]==2) {
 			int[] Nodes = readFromFile(Nfilepath, find_offset*blocksize, blocksize);
 			Node node = new Node(Nodes, blocksize, find_offset, Status[0]);
@@ -432,10 +559,9 @@ class Node {
 	 */
 	
 	//커서 만들기.
-	Node(int[] integers, int blocksize, int offset, int status) {
+	Node(int[] buffer, int blocksize, int offset, int status) {
 //		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
-		
-		int max_keys = (blocksize - 2*Integer.BYTES) / (Integer.BYTES * 2);
+		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
 		int max_vals = max_keys + 1;
 		
 		this.max_keys = max_keys;
@@ -445,22 +571,17 @@ class Node {
 		this.offset = offset;
 		this.status = status;
 		int i;
-		/**/
-		for(i = 0; i < integers.length / 2; i ++) {
-			if(integers[i*2+1]<=0||integers[i*2]<=0) break;
-			vals.add(integers[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
-			keys.add(integers[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+		for(i = 0; i < buffer.length / 2; i ++) {
+			if(buffer[i*2+1]<=0||buffer[i*2]<=0) break;
+			vals.add(buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+			keys.add(buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
 		}
-		if(integers[i*2]!=0)vals.add(integers[i*2]);
-//		
-//		}vals.add(integers[i*2]);
-		System.out.println("integers size : "+integers.length);
-//		vals.add(integers[i/2]);
-		
+		if(buffer[i*2]!=0)vals.add(buffer[i*2]);
+		System.out.println("integers size : "+buffer.length);
 	}
 	
 	Node(int blocksize, int offset, int status) {
-		int max_keys = (blocksize - 2*Integer.BYTES) / (Integer.BYTES * 2);
+		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
 		int max_vals = max_keys + 1;
 		
 		this.max_keys = max_keys;
@@ -480,24 +601,42 @@ class Node {
 	/*
 	 * insert를 하기전에 full인지 아닌지부터 check*/
 	public void insert(int key, int val) {
-		if (keys.size() == 0) {
-			keys.add(key);
-			vals.add(val);
+		if (this.keys.size() == 0) {
+			this.keys.add(key);
+			this.vals.add(val);
 			return ;
 		}
-		Iterator<Integer> it = keys.iterator();
+		Iterator<Integer> it = this.keys.iterator();
+		
 			
 		while(it.hasNext()) {
 			int n = it.next();
+			
 			if(n > key) {
-				keys.add(keys.indexOf(n), key);
-				vals.add(vals.indexOf(n), val);
+				
+				this.keys.add(this.keys.indexOf(n), key);
+				this.vals.add(this.keys.indexOf(n), val);
 				return;
 			}
 		}
-		keys.add(key);
-		vals.add(val);
+		this.keys.add(key);
+		this.vals.add(val);
 	}
+	
+	
+	/*
+	 * keys, vals를 int 배열 buffer로 만들기*/
+	public int[] to_buffer() {
+		int[] buffer = new int[max_keys * 2 + 1];
+		for(int i = 0; i < this.keys.size(); i++) {
+			buffer[i*2] = this.vals.get(i);
+			buffer[i*2 + 1] = this.keys.get(i);
+		}
+		buffer[keys.size()*2] = this.vals.indexOf(keys.size());
+		
+		return buffer;
+	}
+	
 	
 }
 
