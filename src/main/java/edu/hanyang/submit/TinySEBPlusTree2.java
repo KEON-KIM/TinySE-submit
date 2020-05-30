@@ -392,7 +392,134 @@ class BTNodes {
 //            i++;
 //        }
 //		return vals.get(i);
-//    }
+//    }\
+//	public static void splitLeafNode(Node node) throws IOException {
+//		if(isLeafNode(node)) { 
+//			System.out.println("Select #2 : init");//root이면서 leaf인경우 무조건 leaf생성
+//			Node root = new Node(blocksize, ++offset,0); //root로 생성
+//			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
+//			int keytmp=node.keys.get(node.keys.size()/2);
+//			int valtmp=node.vals.get(node.keys.size()/2);
+//			
+//			//분할
+//			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+////					System.out.println("Key Value : "+keys.get(fanout/2));
+//				leaf.keys.add(node.keys.get(node.keys.size()/2));
+//				leaf.vals.add(node.vals.get(node.keys.size()/2));
+//				node.keys.remove(node.keys.size()/2);
+//				node.vals.remove(node.vals.size()/2);
+//			}
+//			node.vals.add(valtmp);
+//			//중간 값 root 노드에 저장
+//			root.keys.add(keytmp);
+//			root.vals.add(node.offset);
+//			root.vals.add(leaf.offset);
+//			node.status = 2; // leaf로 변경
+//			PrintNodeTest(node,root,leaf);
+//			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
+//			
+//			UpdateNode(node,root,leaf);
+//			//메타 파일 업데이트.
+//			writeToFile(filepath, node.to_meta_buffer(),node.offset*8);
+//			writeToFile(filepath, root.to_meta_buffer(),0);
+//			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
+//		}
+//		else {//root일 경우 무조건 Non-leaf생성 
+//			System.out.println("Select #2 : root");
+//			Node root = new Node(blocksize, ++offset,0); //root로 생성
+//			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
+//			int keytmp=node.keys.get(node.keys.size()/2);
+//			int valtmp=node.vals.get(node.keys.size()/2);
+//			
+//			//분할
+//			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
+////					System.out.println("Key Value : "+keys.get(fanout/2));
+//				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1));
+//				Nonleaf.vals.add(node.vals.get(node.keys.size()/2));
+//				node.keys.remove(node.keys.size()/2);
+//				node.vals.remove(node.vals.size()/2);
+//			}
+//			node.vals.add(valtmp);
+//			//중간 값 root 노드에 저장
+//			root.keys.add(keytmp);
+//			root.vals.add(node.offset);
+//			root.vals.add(Nonleaf.offset);
+//			node.status = 1; // Nonleaf로 변경
+//			PrintNodeTest(node,root,Nonleaf);
+//			//노드 파일 업데이트. 
+//			UpdateNode(node, root, Nonleaf);
+//			//루트는 항상 맨위에 8byte만큼 저장
+//			writeToFile(filepath, root.to_meta_buffer(),0);
+//			
+//		}
+//	}
+//	
+//	public static void splitNonLeafNode(Node node) throws IOException{
+//		if(isLeafNode(node)) { //leaf일 경우, 무조건 leaf만 생성
+//			System.out.println("Select #3");
+//			int cur=history.size()-1;
+//			int[] integers = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
+//			int cur_status=1;
+//			if (history.size() ==1) cur_status=0;
+//			Node parent = new Node(integers,blocksize,history.get(cur), cur_status); //parent node생성 leaf parent = non leaf
+//			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
+//			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
+//			int valtmp=node.vals.get(node.keys.size()/2);
+//			history.remove(cur); //사용 offset은 삭제시키기
+//			
+//			//분할
+//			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
+////				System.out.println("Key Value : "+keys.get(fanout/2));
+//				leaf.keys.add(node.keys.get(node.keys.size()/2)); 
+//				leaf.vals.add(node.vals.get(node.keys.size()/2)); 
+//				node.keys.remove(node.keys.size()/2);
+//				node.vals.remove(node.vals.size()/2);
+//			}
+//			
+//			node.vals.add(valtmp);
+//			node.status = 1;//leaf변경
+//			
+//			parent.keys.add(keytmp);
+//			parent.vals.add(leaf.offset);
+//			inserting(parent);
+////			insert(parent, keytmp,leaf.offset);
+//			PrintNodeTest(node,parent,leaf);
+//			UpdateNode(node,parent,leaf);
+//			//Update Meta
+//			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
+//			
+//		}
+//		else { //leaf도, root도 아닐 경우(Nonleaf) 무조건 Nonleaf만 생성
+//			System.out.println("Select #4");
+//			System.out.println("History : "+history);
+//			int cur =history.size()-1;
+//			int[] NodeBuffer = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
+//			int[] MetaBuffer= readFromMeta(filepath,history.get(cur)*8,8);
+//			Node parent = new Node(NodeBuffer,blocksize,history.get(cur), MetaBuffer[0]); //parent node생성 leaf parent = non leaf
+//			System.out.println("Current Node Status : "+MetaBuffer[0]);
+//			System.out.println("Current Node Offset : "+MetaBuffer[1]);
+//			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
+//			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
+//			int valtmp=node.vals.get(node.keys.size()/2);
+//			history.remove(cur);
+//			//분할
+//			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
+////					System.out.println("Key Value : "+keys.get(fanout/2));
+//				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1)); //중간 Key값 이상만 넣기
+//				Nonleaf.vals.add(node.vals.get(node.keys.size()/2)); //Value값은 그대로 가져오기.
+//				node.keys.remove(node.keys.size()/2);
+//				node.vals.remove(node.vals.size()/2);
+//			}
+//			node.vals.add(valtmp);
+//			
+//			parent.keys.add(keytmp);
+//			parent.vals.add(Nonleaf.offset);
+//			inserting(parent);
+//			
+//			PrintNodeTest(node,parent,Nonleaf);
+//			UpdateNode(node,parent,Nonleaf);
+////			history.remove(cur);
+//		}
 
 
 }
