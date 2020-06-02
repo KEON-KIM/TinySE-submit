@@ -1,528 +1,698 @@
-package edu.hanyang.submit;
-
-import edu.hanyang.indexer.BPlusTree;
-import java.util.LinkedList;
-import java.util.ArrayList;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.*;
-
-public class TinySEBPlusTree2 implements BPlusTree{
-	static int offset;
-	static int M=3;
-	static String path = "./tmp/";
-	static int blocksize = M*4;
-	static BTNodes node = new BTNodes(M); //비교 해야할 글로벌 노드 
-	public static void main(String[] args) throws IOException {
-		
-		System.out.println("fanout : "+M);
-		TinySEBPlusTree tree = new TinySEBPlusTree();
-		tree.insert(4, 10);
-		tree.insert(5, 15);
-		tree.insert(6, 20);
-//		node.insert(4, 10);
-//		node.insert(5, 15);
-//		node.insert(6, 20);
-	}
-	public static String make_dir(String tmdir, int step) {
-		String path = tmdir+File.separator+String.valueOf(step);
-		File Folder = new File(path);
-		
-		if (!Folder.exists()) {
-			try {
-				Folder.mkdir();
-			} catch(Exception e) {
-				e.getStackTrace();
-			}
-		}
-		return path;
-	}
-	public static void make_tmp(String tmdir) {
-		File Folder = new File(tmdir);
-
-		if (!Folder.exists()) {
-			try {
-				Folder.mkdir();
-			} catch(Exception e) {
-				e.getStackTrace();
-			}
-		}
-		
-	}
-	
-	private static byte[] readFromFile(String filePath, int position, int size)
-		throws IOException {
-		RandomAccessFile file = new RandomAccessFile(filePath, "r");
-		file.seek(position);
-		byte[] bytes = new byte[size];
-		file.read(bytes);
-		file.close();
-		return bytes;
-	}
-	
-	private static void writeToFile(String filePath, byte[] data, int position)
-		throws IOException{
-		RandomAccessFile file = new RandomAccessFile(filePath, "rw");
-		file.seek(position);
-		file.write(data);
-		file.close();
-	}
-
-	@Override
-	public void close() {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void insert(int key, int val) throws IOException{
-		// TODO Auto-generated method stub
-		//현재 가르키는 노드
-		if(node.isRoot) {
-			node.insert(key, val);
-		}
-		else { //root로 업데이트 
-			//meta파일 열어 확인하고 node값 업데이트 하기.
-			System.out.println("Complete");
-			
-		}
-	}
-	public void UpdateNode() throws IOException{
-		
-
-	}
-	
-	//메타파일 읽고 루트의 offset(node번호) 찾기
-	public int read_root_node() throws IOException{
-		boolean EOF = false;
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-						new FileInputStream(path+File.separator+"node.meta"), blocksize));
-		while(!EOF) {
-			try {
-				int root = is.readInt();
-				int root_offset = is.readInt();
-				if (root == 1)return root_offset;
-			}catch(Exception e) {
-				EOF = true;
-			}
-		}
-		return -1; //-1 몾찾음
-	}
-
-	@Override
-	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
-		DataInputStream is =  new DataInputStream(
-				new BufferedInputStream(
-						new FileInputStream(filepath), blocksize)
-								);
-		
-		int offset = 0;
-		int num_pairs = is.available() / 8 ; // 총 바이트 / (4*2)
-		
-		//init node 생성
-		BTNodes init_node = new BTNodes(blocksize);
-		init_node.offset = offset;
-		
-		for(int i = 0; i < blocksize / 8; i++) {
-			int key = is.readInt();
-			int val = is.readInt();
-			
-			
-			init_node.insert(key, val);
-			
-		}
-		
-		for(int i : init_node.keys) {
-			System.out.println(i);
-		}
-		
-		
-		
-		
-		
-			
-		
-		
-		
-	}
-
-	@Override
-	public int search(int key) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-	
-	public boolean isLeafNode(BTNodes node) {
-		return true;
-	}
-	public boolean isRootNode(BTNodes node) {
-		return true;
-	}
-	public void splitLeafNode(BTNodes node) {
-		
-	}
-	public void splitNonLeafNode(BTNodes node) {
-		
-	}
-	
-
-}
-
-class BTNodes {
-
-	static String path = "./tmp";
-	static int offsets; //노드 생성시 offset값을 변경해주기 위해
-	int fanout; // blocksize를 의미함
-	int blocksize;
-	int offset;//random access시 필요, 
-	
-	List<Integer> keys; //blocksize(fanout) 만큼의 길이
-	List<Integer> vals; // blocksize+1(fanout) 만큼의 길이
-	/* 추상적인 BTNodes의 모습
-	 *    |k_1|k_2|k_3|k_4|k_5|...|k_n|		n개의 key linked list
-	 *  |p_1|p_2|p_3|p_4|p_5|...|p_n|p_n+1|	n+1개의 BTNodes 주소가 저장된 ArrayList
-	 * */
-	
-	boolean isRoot = false;
-	boolean isFull = false;
-	boolean isLeaf;
-	
-	/*
-	 * 제일 첫 노드 생성시 쓰는 생성자
-	 * root = true
-	 * leaf = true
-	 * full = false
-	 */
-	public BTNodes(int fanout) {
-		this.fanout = fanout;
-		this.blocksize = fanout*4;
-		if(offsets ==0) {
-			this.isRoot = true;
-			this.isLeaf = true;
-		}
-		this.keys = new ArrayList<Integer>(fanout);
-		this.vals = new ArrayList<Integer>(fanout+1);
-		this.offset = offsets;
-		offsets++;
-	}
-	/*
-	 * Leaf or non-Leaf 노드를 만든데 쓰는 생성자
-	 */
+//package edu.hanyang.submit;
+//
+//import edu.hanyang.indexer.BPlusTree;
+//
+//import java.io.BufferedInputStream;
+//import java.io.BufferedOutputStream;
+//import java.io.DataInputStream;
+//import java.io.DataOutputStream;
+//import java.io.File;
+//import java.io.FileInputStream;
+//import java.io.FileNotFoundException;
+//import java.io.FileOutputStream;
+//import java.io.IOException;
+//import java.io.RandomAccessFile;
+//import java.nio.ByteBuffer;
+//import java.util.*;
+//
+//public class TinySEBPlusTree implements BPlusTree{
+////	static String filepath ="./tmp/node.meta";
+////	static String Nfilepath = "./tmp/node.data";
+//	static String metapath = "./tmp/bplustree.meta";
+//	static String savepath = "./tmp/bplustree.tree";
+//	static int blocksize=4096;
+//	static int nblocks;
+//	static boolean Root = true;
+//	static List<Node> Cashe= new ArrayList<Node>();
+////	File treefile = new File(savepath);
+////	File metafile = new File(metapath);
 //	
-//	public BTNodes(int fanout, boolean isLeaf) {
-//		this.fanout = fanout;
-//		this.isLeaf = isLeaf;
-//		this.keys = new ArrayList<>(fanout);
-//		this.vals = new ArrayList<>(fanout+1);
+//	static RandomAccessFile tree;
+//	static RandomAccessFile meta;
+//
+//	static int offset=1;
+//	
+//	static Node node = new Node(blocksize,offset,3); //Cusor Nodes
+//	public static void main(String[] args) throws IOException {
+//		File treefile = new File(savepath);
+//		File metafile = new File(metapath);
+//		
+//		if (treefile.exists()) {
+//			if (! treefile.delete()) {
+//				System.err.println("error: cannot remove tree file");
+//				System.exit(1);
+//			}
+//		}
+//		if (metafile.exists()) {
+//			if (! metafile.delete()) {
+//				System.err.println("error: cannot remove meta file");
+//				System.exit(1);
+//			}
+//		}
+//		TinySEBPlusTree Tree = new TinySEBPlusTree();
+//		Tree.open(metapath, savepath, blocksize, nblocks);
+//		System.out.println("Starting");
+//		
+//		Tree.insert(5, 10);
+//		Tree.insert(6, 15);
+//		Tree.insert(4, 20);
+//		Tree.insert(7, 1);
+//		Tree.insert(8, 5);
+//		Tree.insert(17, 7);
+//		Tree.insert(30, 8);
+//		Tree.insert(1, 8);
+//		Tree.insert(58, 1);
+//		Tree.insert(25, 8);
+//		Tree.insert(96, 32);
+//		Tree.insert(21, 8);
+//		Tree.insert(9, 98);
+//		Tree.insert(57, 54);
+//		Tree.insert(157, 54);
+//		Tree.insert(247, 54);
+//		Tree.insert(357, 254);
+//		Tree.insert(557, 54);
+//		Tree.insert(10, 13);
+//		Tree.insert(11, 514);
+//		Tree.insert(12, 599);
+//		Tree.insert(13, 19);
+//		Tree.insert(14, 111);
+//		Tree.insert(15, 899);
+//		Tree.insert(16, 99);
+//		Tree.insert(24, 112);
+//		Tree.insert(23, 119);
+//		Tree.insert(43, 541);
+//		Tree.insert(45, 234);
+//		Tree.insert(62, 51);
+//		Tree.insert(111, 23);
+//		Tree.insert(114, 14);
+//		Tree.insert(215, 919);
+//		Tree.insert(132, 129);
+//		Tree.insert(324, 131);
+//		Tree.insert(199, 89);
+//		Tree.insert(200, 90);
+//		Tree.insert(300, 110);
+//		Tree.insert(400, 120);
+//		
+//		
+////		
+//		Tree.close();
+//		Tree.open(metapath, savepath, blocksize, nblocks);
+//		System.out.println("Valuse : "+Tree.search(5));
+//		System.out.println("Valuse : "+Tree.search(6));
+//		System.out.println("Valuse : "+Tree.search(4));
+//		System.out.println("Valuse : "+Tree.search(7));
+//		System.out.println("Valuse : "+Tree.search(8));
+//		System.out.println("Valuse : "+Tree.search(17));
+//		System.out.println("Valuse : "+Tree.search(30));
+//		System.out.println("Valuse : "+Tree.search(1));
+//		System.out.println("Valuse : "+Tree.search(58));
+//		System.out.println("Valuse : "+Tree.search(25));
+//		System.out.println("Valuse : "+Tree.search(96));
+//		System.out.println("Valuse : "+Tree.search(21));
+//		System.out.println("Valuse : "+Tree.search(9));
+//		System.out.println("Valuse : "+Tree.search(57));
+//		System.out.println("Valuse : "+Tree.search(157));
+//		System.out.println("Valuse : "+Tree.search(247));
+//		System.out.println("Valuse : "+Tree.search(357));
+//		System.out.println("Valuse : "+Tree.search(557));
+//		System.out.println("Valuse : "+Tree.search(10));
+//		System.out.println("Valuse : "+Tree.search(11));
+//		System.out.println("Valuse : "+Tree.search(12));
+//		System.out.println("Valuse : "+Tree.search(13));
+//		System.out.println("Valuse : "+Tree.search(14));
+//		System.out.println("Valuse : "+Tree.search(15));
+//		System.out.println("Valuse : "+Tree.search(16));
+//		System.out.println("Valuse : "+Tree.search(24));
+//		System.out.println("Valuse : "+Tree.search(23));
+//		System.out.println("Valuse : "+Tree.search(43));
+//		System.out.println("Valuse : "+Tree.search(45));
+//		System.out.println("Valuse : "+Tree.search(62));
+//		System.out.println("Valuse : "+Tree.search(111));
+//		System.out.println("Valuse : "+Tree.search(114));
+//		System.out.println("Valuse : "+Tree.search(215));
+//		System.out.println("Valuse : "+Tree.search(132));
+//		System.out.println("Valuse : "+Tree.search(324));
+//		System.out.println("Valuse : "+Tree.search(199));
+//		System.out.println("Valuse : "+Tree.search(200));
+//		System.out.println("Valuse : "+Tree.search(300));
+//		System.out.println("Valuse : "+Tree.search(400));
+//		System.out.println("Valuse : "+Tree.search(40));
+////		
+//		
+//		System.out.println("Complete");
+//////		
+////		String file_ = "./src/test/resources/stage3-15000000.data";
+////		
+////		DataInputStream is = new DataInputStream(
+////									new BufferedInputStream(
+////											new FileInputStream(file_), blocksize));
+////		
+////		long timestamp = System.currentTimeMillis();
+////		int Size = is.available();
+////		while(Size != 0) {
+////			int key = is.readInt();
+////			int val = is.readInt();
+////			
+////			Tree.insert(key, val);
+////			
+////			
+////		}
+////		
+////		System.out.println("done time : " + (System.currentTimeMillis() - timestamp));
+////		
 //	}
-	
-	
-	/*
-	 * halfrule을 만족하면 true
-	 * 아니라면 false
-	 */
-	public boolean isHalfRule() { 
-		if(keys.size() > fanout/2) return true;
-		return false;
-	}
-	//노드 상태 확인 root인지 leaf인지 non_leaf인지
-	public int status() {
-		if(isRoot) return 1;
-		else if(isLeaf) return 3;
-		else return 2;
-	}
-	//메타 파일 생성
-		//매번 메타파일 수정해야 함.
-	
-	
-	public void DataToNode(int offset) throws IOException {
-		DataInputStream is = new DataInputStream(
-				new BufferedInputStream(
-						new FileInputStream(path+File.separator+"+offset+.data"), blocksize));
-		ArrayList<Integer> Nkeys = new ArrayList<Integer>();
-		ArrayList<Integer> Nvals = new ArrayList<Integer>();
-		try {
-			Nvals.add(is.readInt());
-			Nkeys.add(is.readInt());	
-		}catch(Exception e){
-			int i;
-			//노드 파일 읽어 들여오기.
-			for(i =0 ; i<keys.size(); i++) {
-				this.keys.set(i, Nkeys.get(i));
-				this.vals.set(i, Nvals.get(i));
-			}
-			this.vals.set(i+1, Nvals.get(i+1));
-			this.offset = offset;
-		}
-		
-	}
-	
-	public void insert(int key, int val) throws IOException  {
-		if(isLeaf) {
-			init_insert(key, val);
-			if(isFull) {
-				Split(key,val);
-			}
-		}
-		DataOutputStream os = open_output_stream(path,offset,blocksize);
-		write_run_file(keys,vals,os);
-		write_meta_file();
-	}
-	
-	/*
-	 * node안에서 key값에 해당하는 point를 return
-	 * 이부분은 다시 짜야함
-	 */
-	public void init_insert(int key, int val) {
-		if (keys.size() == 0) {
-			keys.add(key);
-			vals.add(val);
-		}
-		//if (keys.size() == this.fanout) throw new Exception();
-		else {
-			Iterator<Integer> it = keys.iterator();
-			
-			while(it.hasNext()) {
-				int n = it.next();
-				if(n > key) {
-					keys.add(keys.indexOf(n), key);
-					vals.add(vals.indexOf(n), val);
-					break;
-				}
-			}
-			keys.add(key);
-			vals.add(val);
-		}
-	}
-	public static DataOutputStream open_output_stream(String path, int offset, int blocksize) throws IOException {
-		return new DataOutputStream(
-				new BufferedOutputStream(
-						new FileOutputStream(path+File.separator+offset+".data"), blocksize));
-	}
-	//node data file 생성
-	public static void write_run_file(List<Integer> Keys,List<Integer> Vals, DataOutputStream os) throws IOException {
-		System.out.println("Key Array : "+Keys);
-		System.out.println("Val Array : "+Vals);
-		for(int i = 0; i<Keys.size();i++) {
-			os.writeInt(Vals.get(i));
-			os.writeInt(Keys.get(i));	
-		}
-		os.close();
-	}//node 정보 저장 meta file 저장
-	public void write_meta_file(BTNodes Node) throws IOException{
-		DataOutputStream os = new DataOutputStream(
-				new BufferedOutputStream(
-						new FileOutputStream(path+File.separator+"node.meta",true), blocksize)); //true 주게되면 이어쓰기
-		int status=Node.status();
-		System.out.println("Status : "+status);
-		System.out.println("Node offSet : "+Node.offset);
-		os.writeInt(Node.offset);
-		os.writeInt(status);
-		os.close();
-	}
-	public void write_meta_file() throws IOException{
-		DataOutputStream os = new DataOutputStream(
-				new BufferedOutputStream(
-						new FileOutputStream(path+File.separator+"node.meta",true), blocksize)); //true 주게되면 이어쓰기
-		int status=status();
-		System.out.println("Status : "+status);
-		System.out.println("Node offSet : "+offset);
-		os.writeInt(offset);
-		os.writeInt(status);
-		os.close();
-	}
-	//Root가 Full일 때 나누는 경우
-	//Split은 leaf nonleaf만 생각.
-	public void Split(int key, int val) throws IOException{
-		System.out.println("offset : "+offset);
-		BTNodes root = new BTNodes(fanout); //root노드 생성 
-		DataOutputStream os1 = open_output_stream(path,root.offset,blocksize);
-		
-		System.out.println("offset : "+root.offset);
-		BTNodes newest = new BTNodes(fanout); //new 노드 생성
-		DataOutputStream os2 = open_output_stream(path,newest.offset,blocksize);
-		System.out.println("offset : "+newest.offset);
-		//중간값 미리 저장
-		int tmp=keys.get(fanout/2);
-		
-		//분할
-		for(int i =fanout/2; i <= keys.size() ;i++) {
-//			System.out.println("Key Value : "+keys.get(fanout/2));
-			newest.keys.add(keys.get(fanout/2));
-			newest.vals.add(vals.get(fanout/2));
-			keys.remove(fanout/2);
-			vals.remove(fanout/2);
-		}
-		//중간 값 root 노드에 저장
-		root.keys.add(tmp);
-		root.vals.add(offset);
-		root.vals.add(newest.offset);
-		root.isRoot = true;
-	
-		//origin 노드 root 효력 잃음
-		this.isRoot = false;
-		//각 노드data 생성
-		write_run_file(root.keys,root.vals,os1);
-		write_meta_file(root);
-		write_run_file(newest.keys,newest.vals,os2);
-		write_meta_file(newest);
-		
-	}
-//	public Integer getkey(int key){ 
+//	
 //		
-//		if(key >= keys.get(this.fanout - 1)) return vals.get(this.fanout);
 //		
-//		Iterator<Integer> it = keys.iterator();
-//		int i = 0;
+//	public static String make_dir(String tmdir, int step) {
+//		String path = tmdir+File.separator+String.valueOf(step);
+//		File Folder = new File(path);
 //		
-//		/*
-//		 * 이부분이문제
-//		 * it.next가 key보다 큰게 나왔을때 i++을 할까 안할까에따라 다름
-//		 */
-//		while((it.next() <= key) && it.hasNext() ){
-//            i++;
-//        }
-//		return vals.get(i);
-//    }\
+//		if (!Folder.exists()) {
+//			try {
+//				Folder.mkdir();
+//			} catch(Exception e) {
+//				e.getStackTrace();
+//			}
+//		}
+//		return path;
+//	}
+//	
+//	public static void make_tmp(String tmdir) {
+//		File Folder = new File(tmdir);
+//
+//		if (!Folder.exists()) {
+//			try {
+//				Folder.mkdir();
+//			} catch(Exception e) {
+//				e.getStackTrace();
+//			}
+//		}
+//		
+//	}
+//	
+//	private static int[] readFromFile(RandomAccessFile file, int position, int size)
+//		throws IOException {
+//		int node_size = blocksize/Integer.BYTES;
+//		byte[] bytebuffer = new byte[node_size*4];
+//		int[] buffer = new int[node_size];
+//		file.seek(position);
+//		file.read(bytebuffer);
+//		
+//		ByteBuffer bf = ByteBuffer.wrap(bytebuffer);
+//		
+//		for(int i = 0; i < node_size; i++) {
+//			buffer[i] = bf.getInt();
+//		}
+//		return buffer;
+//	}
+//	
+//	private static int[] readFromMeta(RandomAccessFile file, int position, int size)
+//		throws IOException {
+//		file.seek(position);
+//		int[] integers = new int[size/Integer.BYTES];
+//		for(int i = 0; i < integers.length; i++) {
+//			integers[i] = file.readInt();
+//		}
+////		file.close();
+//		return integers;
+//	}
+//	
+//	private static void writeToFile(RandomAccessFile file, int[] buffer, int position)
+//		throws IOException{
+//		
+//		file.seek(position);
+//		byte[] bytebuffer = new byte[buffer.length*4];
+//		for(int i = 0; i < buffer.length; i++) {
+//			System.arraycopy(intTobyte(buffer[i]), 0, bytebuffer, i*4, 4);
+//		}
+//		file.write(bytebuffer);
+////		file.close();
+//	}
+//	public static  byte[] intTobyte(int value) {
+//		byte[] byteArray = new byte[4];
+//		byteArray[0] = (byte)(value >> 24);
+//		byteArray[1] = (byte)(value >> 16);
+//		byteArray[2] = (byte)(value >> 8);
+//		byteArray[3] = (byte)(value);
+//		return byteArray;
+//	}
+//
+//	@Override
+//	public void close() throws IOException {
+//		// TODO Auto-generated method stub
+//		tree.close();
+//		meta.close();
+//	}
+//
+//	@Override
+//	public void insert(int key, int val) throws IOException{
+//
+////		System.out.println("----------------insert Start-----------Key : "+key+"Val : "+val);
+//		if(!isRootNode(node)) {
+////			System.out.println("Not Root");
+////			System.out.println("Current status : "+node.status);
+//			searchRoot();
+//			if(!isLeafNode(node)) {
+////				System.out.println("Current status : "+node.status);
+//				searchLeaf(key);
+//			}
+//			//node초기화
+//		}
+////		System.out.println("kkkk1");
+//		init_insert(node, key, val);
+////		System.out.println("kkkk2");
+//		Split(node);
+//		
+////		System.out.println("Cashe Size : "+Cashe.size());
+////		System.out.println("----------------insert Ends---------------");
+//		//node 변경하기
+////		int[] Array = new int[1];
+////		node = new Node(Array, blocksize, 2,0);
+//	}
+//	
+//	@Override
+//	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
+//		String tmpdir = "./tmp/";
+//		make_tmp(tmpdir);
+//		tree = new RandomAccessFile(filepath, "rw");
+//		meta = new RandomAccessFile(metafile, "rw");
+//		this.blocksize = blocksize;
+//		this.nblocks = nblocks;
+//	}
+//
+//	@Override
+//	public int search(int key) throws IOException {
+//		// TODO Auto-generated method stub
+////		System.out.println("starting");
+//		if(!isRootNode(node)) {
+////			System.out.println("Not Root");
+//			searchRoot();//root로 변경
+//			if(!isLeafNode(node)) {
+//				searchLeaf(key);// leaf로 변경
+//			}
+//		}
+////		System.out.println("Keys :"+node.keys);
+////		System.out.println("Vals :"+node.vals);
+//		int i;
+////		System.out.println("Found Leaf Node Key : "+node.keys);
+//		for(i=0;i<node.keys.size();i++) {
+//			if(node.keys.get(i)==key) {
+//				
+//				return node.vals.get(i);
+//			}
+//		
+//		}
+////		System.out.println("Do not find it!");
+//		return -1;
+//		
+//	}
+//	
+//	public static boolean isLeafNode(Node node) {
+//		if(node.status == 2||node.status==3)
+//			return true;
+//		return false;
+//	}
+//	public static boolean isRootNode(Node node) {
+//		if(node.status == 0||node.status==3)
+//			return true;
+//		return false;
+//	}
+//	public static boolean isFull(Node node) {
+//		if(node.keys.size() == (blocksize-8)/(Integer.BYTES*2)) return true;
+//		return false;
+//	}
+//
+//	//status, offset 순으로 저장함
+//	public static void searchRoot() throws IOException {
+//		if(!Root) {
+//			node = Cashe.get(0);
+//			Node tmp = node;
+//			Cashe.removeAll(Cashe);
+//			Cashe.add(tmp);
+//			return ;
+//		}
+//		//root 변동 있을 때 Cashe 다시 만들기.
+//		Cashe.removeAll(Cashe);
+//		int[] offsets = readFromMeta(meta, 0, 8);
+//		
+////		System.out.println("what the offset? : "+ offsets[1]);
+//		int[] Integers = readFromFile(tree, offsets[1]*blocksize,blocksize);
+//
+//		node = new Node(Integers, blocksize, offsets[1],  offsets[0]);
+////		System.out.println("find root : "+ node.keys);
+////		System.out.println("find root : "+ node.vals);
+//		Cashe.add(0,node);
+//		Root = false; 
+//	}
+//	//leaf 찾기
+//	public static void searchLeaf(int key)throws IOException {
+//		Cashe.add(node);
+////		System.out.println("History : "+history);
+////		System.out.println("Founding LeafNode..");
+//		int find_offset = 0;
+////		System.out.println("Finding..... Current Node Offset : "+ node.offset);
+//		for(int i=0;i<node.keys.size();i++) { //현재 Cur_node
+//			if(key<node.keys.get(i)){
+//				find_offset = node.vals.get(i);break;
+//			}
+//			
+//		}
+//		if(find_offset == 0) {//keys를 돌고 작은 값을 찾지 못하면 find_offset은 0 마지막 value값 참조해야함
+//			find_offset = node.vals.get(node.vals.size()-1); //Vals중 가장 우측 값
+//		}
+//		int[] Status = readFromMeta(meta,find_offset*8,8);
+//		if(Status[0]==2) {
+//			int[] Nodes = readFromFile(tree, find_offset*blocksize, blocksize);
+//			node = new Node(Nodes, blocksize, find_offset, Status[0]);
+////			System.out.println("Found It!!!! it's offset :"+node.offset);
+//			
+//		}
+//		else {
+//			int[] Nodes = readFromFile(tree, find_offset*blocksize, blocksize);
+//			node = new Node(Nodes, blocksize, find_offset, Status[0]);
+//			searchLeaf(key);
+//
+//		}
+//	}
+//	
+//	public static void init_insert(Node node, int key, int val) throws IOException{
+////		System.out.println("Node Keys: "+node.keys);
+////		System.out.println("Node Vals: "+node.vals);
+//		if (node.keys.size() == 0) {
+////			writeToFile(meta, node.to_meta_buffer(),0);
+////			writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+//			node.keys.add(key);
+//			node.vals.add(val);
+//		}
+//		//if (keys.size() == this.fanout) throw new Exception();
+//		else {
+//			Iterator<Integer> it = node.keys.iterator();
+//			
+//			while(it.hasNext()) {
+//				int n = it.next();
+//				int consist;
+//				if(n > key ) {
+//					consist = node.keys.indexOf(n);
+//				
+//					if(node.status==3||node.status==2) {
+//						node.keys.add(node.keys.indexOf(n), key);
+//						node.vals.add(consist, val);
+//					}else {
+//					
+//					node.keys.add(node.keys.indexOf(n), key);
+//					node.vals.add(consist+1, val);
+//					}
+//					writeToFile(tree, node.to_buffer(),node.offset*blocksize);
+//					
+//					
+//					return ;
+//				}
+//			}
+//			node.keys.add(key);
+//			node.vals.add(val);
+//		}
+//		writeToFile(tree, node.to_buffer(),node.offset*blocksize);
+//	}
+//	
+//	public static void Split(Node node) throws IOException{
+//		
+//		if(isFull(node)) {
+//			if(isRootNode(node)) {
+////				System.out.println("Node is Full1");
+//				splitLeafNode(node);
+//			}
+//			else {
+////				System.out.println("Node is Full2");
+//				splitNonLeafNode(node);
+//			}
+//		}
+//	}
+//	public static void UpdateNode(Node node, Node parent, Node child) throws IOException{
+//		//root일경우, root노드leaf노드(init경우) 같음
+//		writeToFile(tree, node.to_buffer(),node.offset*blocksize);
+//		writeToFile(tree, parent.to_buffer(),parent.offset*blocksize);
+//		writeToFile(tree, child.to_buffer(),child.offset*blocksize);
+//	}
+//	public static void UpdateMeta(Node node, Node parent, Node child) throws IOException{
+//		//root일경우, root노드leaf노드(init경우) 같음
+//		writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+//		writeToFile(meta, parent.to_meta_buffer(),parent.offset*8);
+//		writeToFile(meta, child.to_meta_buffer(),child.offset*8);
+//	}
+//	public static void PrintNodeTest(Node node, Node parent, Node child) {
+//		System.out.println("node Keys# : "+node.keys);
+//		System.out.println("node Vals# : "+node.vals);
+//		
+//		System.out.println("root Keys# : "+parent.keys);
+//		System.out.println("root Vals# : "+parent.vals);
+//		
+//		System.out.println("leaf Keys# : "+child.keys);
+//		System.out.println("leaf Vals# : "+child.vals);
+//	}
 //	public static void splitLeafNode(Node node) throws IOException {
 //		if(isLeafNode(node)) { 
-//			System.out.println("Select #2 : init");//root이면서 leaf인경우 무조건 leaf생성
+////			System.out.println("Select #1 : init");//root이면서 leaf인경우 무조건 leaf생성
 //			Node root = new Node(blocksize, ++offset,0); //root로 생성
 //			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
 //			int keytmp=node.keys.get(node.keys.size()/2);
-//			int valtmp=node.vals.get(node.keys.size()/2);
-//			
 //			//분할
-//			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
-////					System.out.println("Key Value : "+keys.get(fanout/2));
-//				leaf.keys.add(node.keys.get(node.keys.size()/2));
-//				leaf.vals.add(node.vals.get(node.keys.size()/2));
-//				node.keys.remove(node.keys.size()/2);
-//				node.vals.remove(node.vals.size()/2);
-//			}
-//			node.vals.add(valtmp);
+//			leaf.keys = node.keys.subList(node.keys.size()/2, node.keys.size());
+//			leaf.vals = node.vals.subList(node.vals.size()/2, node.vals.size());
+////			leaf.keys = node.getKeyList(node.keys.size()/2, node.keys.size()-1);
+////			leaf.vals = node.getValList(node.vals.size()/2, node.vals.size()-1);
+//			
+//			node.keys = node.keys.subList(0, node.keys.size()/2);
+//			node.vals = node.vals.subList(0, node.vals.size()/2);
+////			node.keys = node.getKeyList(0, node.keys.size()/2-1);
+////			node.vals = node.getValList(0, node.vals.size()/2);
+//		
 //			//중간 값 root 노드에 저장
 //			root.keys.add(keytmp);
 //			root.vals.add(node.offset);
 //			root.vals.add(leaf.offset);
 //			node.status = 2; // leaf로 변경
-//			PrintNodeTest(node,root,leaf);
+////			PrintNodeTest(node,root,leaf);
 //			//노드 파일 업데이트. UPdateNode, UpdateMeta 둘다 순서 (origin, parent, child)
 //			
 //			UpdateNode(node,root,leaf);
+//			UpdateMeta(node,root,leaf);
+//			writeToFile(meta, root.to_meta_buffer(),0);
 //			//메타 파일 업데이트.
-//			writeToFile(filepath, node.to_meta_buffer(),node.offset*8);
-//			writeToFile(filepath, root.to_meta_buffer(),0);
-//			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
+////			writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+////			writeToFile(meta, root.to_meta_buffer(),0);
+////			writeToFile(meta, root.to_meta_buffer(),root.offset*8);
+////			writeToFile(meta, leaf.to_meta_buffer(),leaf.offset*8);
 //		}
 //		else {//root일 경우 무조건 Non-leaf생성 
-//			System.out.println("Select #2 : root");
+////			System.out.println("Select #2 : root");
+//			
 //			Node root = new Node(blocksize, ++offset,0); //root로 생성
 //			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
 //			int keytmp=node.keys.get(node.keys.size()/2);
-//			int valtmp=node.vals.get(node.keys.size()/2);
-//			
 //			//분할
-//			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
-////					System.out.println("Key Value : "+keys.get(fanout/2));
-//				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1));
-//				Nonleaf.vals.add(node.vals.get(node.keys.size()/2));
-//				node.keys.remove(node.keys.size()/2);
-//				node.vals.remove(node.vals.size()/2);
-//			}
-//			node.vals.add(valtmp);
-//			//중간 값 root 노드에 저장
+//			
+////			Nonleaf.keys = node.getKeyList(node.keys.size()/2+1, node.keys.size()-1);
+////			Nonleaf.vals = node.getValList(node.vals.size()/2, node.vals.size()-1);
+//			Nonleaf.keys = node.keys.subList(node.keys.size()/2+1, node.keys.size());
+//			Nonleaf.vals = node.vals.subList(node.vals.size()/2, node.vals.size());
+//
+//			node.keys = node.keys.subList(0, node.keys.size()/2);
+//			node.vals = node.vals.subList(0, node.vals.size()/2);
+//			
+////			node.keys = node.getKeyList(0, node.keys.size()/2-1);
+////			node.vals = node.getValList(0, node.vals.size()/2-1);
+//			
 //			root.keys.add(keytmp);
 //			root.vals.add(node.offset);
 //			root.vals.add(Nonleaf.offset);
 //			node.status = 1; // Nonleaf로 변경
-//			PrintNodeTest(node,root,Nonleaf);
+////			PrintNodeTest(node,root,Nonleaf);
+//			Root = true; // 루트 변동 생김. SearchRoot 실행시 Cashe다시 찾아야함.
 //			//노드 파일 업데이트. 
 //			UpdateNode(node, root, Nonleaf);
+//			UpdateMeta(node, root, Nonleaf);
 //			//루트는 항상 맨위에 8byte만큼 저장
-//			writeToFile(filepath, root.to_meta_buffer(),0);
+//			writeToFile(meta, root.to_meta_buffer(),0);
+////			writeToFile(meta, root.to_meta_buffer(),root.offset*8);
+////			writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+////			writeToFile(meta, Nonleaf.to_meta_buffer(),Nonleaf.offset*8);
 //			
 //		}
 //	}
 //	
 //	public static void splitNonLeafNode(Node node) throws IOException{
 //		if(isLeafNode(node)) { //leaf일 경우, 무조건 leaf만 생성
-//			System.out.println("Select #3");
-//			int cur=history.size()-1;
-//			int[] integers = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
-//			int cur_status=1;
-//			if (history.size() ==1) cur_status=0;
-//			Node parent = new Node(integers,blocksize,history.get(cur), cur_status); //parent node생성 leaf parent = non leaf
+////			System.out.println("Select #3");
+////			System.out.println("Now History : "+history);
+//			int cur=Cashe.size()-1;
+////			int[] NodeBuffer = readFromFile(tree, history.get(cur)*blocksize, blocksize);
+////			int[] MetaBuffer= readFromMeta(meta,history.get(cur)*8,8);
+//			
+////			Node parent = new Node(NodeBuffer,blocksize,history.get(cur), MetaBuffer[0]); //parent node생성 leaf parent = non leaf
+//			Node parent = Cashe.get(cur);
 //			Node leaf = new Node(blocksize, ++offset,2); //leaf로 생성
 //			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
 //			int valtmp=node.vals.get(node.keys.size()/2);
-//			history.remove(cur); //사용 offset은 삭제시키기
+////			System.out.println("What is the Parent key Node? : "+parent.keys);
+////			System.out.println("What is the Parent val Node? : "+parent.vals);
+//			Cashe.remove(cur); //사용 offset은 삭제시키기
 //			
 //			//분할
-//			for(int i =node.keys.size()/2; i <= node.keys.size() ;i++) {
-////				System.out.println("Key Value : "+keys.get(fanout/2));
-//				leaf.keys.add(node.keys.get(node.keys.size()/2)); 
-//				leaf.vals.add(node.vals.get(node.keys.size()/2)); 
-//				node.keys.remove(node.keys.size()/2);
-//				node.vals.remove(node.vals.size()/2);
-//			}
+////			leaf.keys = node.getKeyList(node.keys.size()/2, node.keys.size()-1);
+////			leaf.vals = node.getValList(node.vals.size()/2, node.vals.size()-1);
+//			leaf.keys = node.keys.subList(node.keys.size()/2, node.keys.size());
+//			leaf.vals = node.vals.subList(node.vals.size()/2, node.vals.size());
 //			
-//			node.vals.add(valtmp);
-//			node.status = 1;//leaf변경
+////			node.keys = node.getKeyList(0, node.keys.size()/2-1);
+////			node.vals = node.getValList(0, node.vals.size()/2-1);
+//			node.keys = node.keys.subList(0, node.keys.size()/2);
+//			node.vals = node.vals.subList(0, node.vals.size()/2);
 //			
-//			parent.keys.add(keytmp);
-//			parent.vals.add(leaf.offset);
-//			inserting(parent);
+//			init_insert(parent,keytmp, leaf.offset);
+//			Split(parent);
 ////			insert(parent, keytmp,leaf.offset);
-//			PrintNodeTest(node,parent,leaf);
+////			PrintNodeTest(node,parent,leaf);
 //			UpdateNode(node,parent,leaf);
+//			UpdateMeta(node,parent,leaf);
+//			
 //			//Update Meta
-//			writeToFile(filepath, leaf.to_meta_buffer(),leaf.offset*8);
+////			writeToFile(meta, leaf.to_meta_buffer(),leaf.offset*8);
+////			writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+////			writeToFile(meta, parent.to_meta_buffer(),parent.offset*8);
 //			
 //		}
 //		else { //leaf도, root도 아닐 경우(Nonleaf) 무조건 Nonleaf만 생성
-//			System.out.println("Select #4");
-//			System.out.println("History : "+history);
-//			int cur =history.size()-1;
-//			int[] NodeBuffer = readFromFile(Nfilepath, history.get(cur)*blocksize, blocksize);
-//			int[] MetaBuffer= readFromMeta(filepath,history.get(cur)*8,8);
-//			Node parent = new Node(NodeBuffer,blocksize,history.get(cur), MetaBuffer[0]); //parent node생성 leaf parent = non leaf
-//			System.out.println("Current Node Status : "+MetaBuffer[0]);
-//			System.out.println("Current Node Offset : "+MetaBuffer[1]);
+////			System.out.println("Select #4");
+////			System.out.println("Now History : "+history);
+//			int cur =Cashe.size()-1;
+////			int[] NodeBuffer = readFromFile(tree, history.get(cur)*blocksize, blocksize);
+////			int[] MetaBuffer = readFromMeta(meta,history.get(cur)*8,8);
+//			Node parent = Cashe.get(cur);
+////			Node parent = new Node(NodeBuffer,blocksize,history.get(cur), MetaBuffer[0]); //parent node생성 leaf parent = non leaf
 //			Node Nonleaf = new Node(blocksize, ++offset,1); //Nonleaf로 생성
+//			
 //			int keytmp=node.keys.get(node.keys.size()/2); // 7/8/9 -> 8가져가기
-//			int valtmp=node.vals.get(node.keys.size()/2);
-//			history.remove(cur);
+//			Cashe.remove(cur);
 //			//분할
-//			for(int i =node.keys.size()/2; i < node.keys.size() ;i++) {
-////					System.out.println("Key Value : "+keys.get(fanout/2));
-//				Nonleaf.keys.add(node.keys.get(node.keys.size()/2+1)); //중간 Key값 이상만 넣기
-//				Nonleaf.vals.add(node.vals.get(node.keys.size()/2)); //Value값은 그대로 가져오기.
-//				node.keys.remove(node.keys.size()/2);
-//				node.vals.remove(node.vals.size()/2);
-//			}
-//			node.vals.add(valtmp);
+////			Nonleaf.keys = node.getKeyList(node.keys.size()/2+1, node.keys.size()-1);
+////			Nonleaf.vals = node.getValList(node.vals.size()/2, node.vals.size()-1);
+//			Nonleaf.keys = node.keys.subList(node.keys.size()/2+1, node.keys.size());
+//			Nonleaf.vals = node.vals.subList(node.vals.size()/2, node.vals.size());
 //			
-//			parent.keys.add(keytmp);
-//			parent.vals.add(Nonleaf.offset);
-//			inserting(parent);
+////			node.keys = node.getKeyList(0, node.keys.size()/2-1);
+////			node.vals = node.getValList(0, node.vals.size()/2-1);
+//			node.keys = node.keys.subList(0, node.keys.size()/2);
+//			node.vals = node.vals.subList(0, node.vals.size()/2);
+////			System.out.println("What is the Parent key Node? : "+parent.keys);
+////			System.out.println("What is the Parent val Node? : "+parent.vals);
+////			System.out.println("What is the Parent val Node? : "+parent.status);
 //			
-//			PrintNodeTest(node,parent,Nonleaf);
+//			init_insert(parent,keytmp, Nonleaf.offset);
+//			Split(parent);
+//			
+////			PrintNodeTest(node,parent,Nonleaf);
 //			UpdateNode(node,parent,Nonleaf);
-////			history.remove(cur);
+//			UpdateMeta(node,parent,Nonleaf);
+////			
+////			writeToFile(meta, node.to_meta_buffer(),node.offset*8);
+////			writeToFile(meta, parent.to_meta_buffer(),parent.offset*8);
+////			writeToFile(meta, Nonleaf.to_meta_buffer(),Nonleaf.offset*8);
 //		}
-
-
-}
+//	}
+//
+//}
+//
+//class Node {
+//	int offset;
+//	
+//	/* status 
+//	 * 0 : root
+//	 * 1 : non leaf
+//	 * 2 : leaf
+//	 */
+//	int status; 
+//	int max_keys;
+//	
+//	List<Integer> keys;
+//	List<Integer> vals;
+//	
+//	
+//	/*생성자는 2가지
+//	 * stream을 input으로 받을때 <- search 할때 필요
+//	 * 그냥 크기만큼 key, val을 생성 <- 새로운 노드를 만들때 필요 ex) split, write
+//	 */
+//	
+//	//커서 만들기.
+//	Node(int[] buffer, int blocksize, int offset, int status) {
+////		blocksize -= 8; // blocksize에서 한쌍 덜 읽어오게 8을 빼
+//		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
+//		int max_vals = max_keys + 1;
+//		
+//		this.max_keys = max_keys;
+//		keys = new ArrayList<>(max_keys);
+//		vals = new ArrayList<>(max_vals);
+//		
+//		this.offset = offset;
+//		this.status = status;
+//		int i;
+//		for(i = 0; i < buffer.length / 2; i ++) {
+//			if(buffer[i*2+1]<0||buffer[i*2]<0) break;
+//			vals.add(buffer[i*2]); //0, 2, 4, 8, 16, ... 번째 숫자들어감
+//			keys.add(buffer[i*2+1]); //1, 3, 5, 7, 9 ... 번째 숫자 들어감
+//		}
+//		if(buffer[i*2]!=-1)vals.add(buffer[i*2]);
+//	}
+//	
+//	Node(int blocksize, int offset, int status) {
+//		int max_keys = (blocksize / Integer.BYTES - 1) / 2;
+//		int max_vals = max_keys + 1;
+//		
+//		this.max_keys = max_keys;
+//		keys = new ArrayList<>(max_keys);
+//		vals = new ArrayList<>(max_vals);
+//		
+//		this.offset = offset;
+//		this.status = status;
+//	}
+//	
+//	public boolean isFull() {
+//		if(keys.size() == this.max_keys) return true;
+//		
+//		return false;
+//	}
+//
+//	public int[] to_buffer() {
+//		int[] buffer = new int[max_keys * 2 + 1];
+////		System.out.println("what? max_keys:"+buffer.length);
+//		int i;
+////		System.out.println("init Key maximum : "+this.keys.size());
+////		System.out.println("init Val maximum : "+this.vals.size());
+//		for(i = 0; i < this.keys.size(); i++) {
+//			buffer[i*2] = this.vals.get(i);
+//			buffer[i*2 + 1] = this.keys.get(i);
+//		}
+//		if(i+1==vals.size()) {
+//			buffer[i*2] = this.vals.get(i);
+//		}
+//		//padding
+//		for(i=buffer.length-1;i>=(this.vals.size()+this.keys.size());i--) {
+//			buffer[i]=-1;
+//		}
+//		return buffer;
+//	}
+//	
+//	
+//	public int[] to_meta_buffer() {
+//		int[] buffer = new int[2];
+//		buffer[0]=this.status;
+//		buffer[1] = this.offset;
+//		
+//		return buffer;
+//	}
+//
+//	
+//}
 
 
 
