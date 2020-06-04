@@ -111,8 +111,9 @@ public class BPlusTreeTest {
 
 		TinySEBPlusTree tree = new TinySEBPlusTree();
 		tree.open(metapath, savepath, blocksize, nblocks);
-
+		int mb = 1024*1024;
 		long startTime = System.currentTimeMillis();
+		Runtime runtime = Runtime.getRuntime();
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-15000000.data").getFile())))) {
 			while (in.available() > 0) {
 				int termid = in.readInt();
@@ -124,9 +125,10 @@ public class BPlusTreeTest {
 			exc.printStackTrace();
 			System.exit(1);
 		}
+//		tree.printoffset();
 		double duration = (double)(System.currentTimeMillis() - startTime)/1000;
-
-		System.out.println("Time duration: " + duration);
+		System.out.println("Used Memory : " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
+		System.out.println("Inserting time duration: " + duration);
 
 		tree.close();
 
@@ -134,11 +136,12 @@ public class BPlusTreeTest {
 		tree.open(metapath, savepath, blocksize, nblocks);
 
 		startTime = System.currentTimeMillis();
+		runtime = Runtime.getRuntime();
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-15000000.data").getFile())))) {
 			while (in.available() > 0) {
 				int termid = in.readInt();
 				int addr = in.readInt();
-
+//				int a = tree.search(termid);
 				assertEquals(tree.search(termid), addr);
 			}
 		} catch (IOException exc) {
@@ -146,8 +149,8 @@ public class BPlusTreeTest {
 			System.exit(1);
 		}
 		duration = (double)(System.currentTimeMillis() - startTime)/1000;
-
-		System.out.println("Time duration: " + duration);
+		System.out.println("Used Memory : " + (runtime.totalMemory() - runtime.freeMemory())/mb);
+		System.out.println("Searching time duration: " + duration);
 
 		tree.close();
 	}
