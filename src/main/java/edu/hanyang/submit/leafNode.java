@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class leafNode extends Node {
-leafNode(byte[] tree_buffer, int blocksize, int status, int offset) {
+	leafNode(byte[] tree_buffer, int blocksize, int status, int offset) {
 		
 		this.max_num = (blocksize / Integer.BYTES) / 2;
 		this.blocksize = blocksize;

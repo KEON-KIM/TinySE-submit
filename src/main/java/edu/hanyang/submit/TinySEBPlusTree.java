@@ -12,6 +12,10 @@ public class TinySEBPlusTree implements BPlusTree{
 	final static int metasize = 12;
 	int blocksize;
 	int nblocks;
+	int fanout;
+	int meta_zero;
+	int meta_one;
+	int meta_two;
 	int height = 1;
 	
 	private RandomAccessFile tree;
@@ -20,7 +24,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	Node cur;
 	Node root;
 	int offset=1;
-	List<Node> cache = new ArrayList<>(this.nblocks);;
+	List<Node> cache = new ArrayList<>(this.nblocks);
 
 	int[] piv = new int[2];
 	byte[] tree_buffer;
@@ -28,7 +32,9 @@ public class TinySEBPlusTree implements BPlusTree{
 	public void printoffset() {
 		System.out.println("offset : " + this.offset);
 	}
-	
+	public void printheight() {
+		System.out.println("height : " + this.height);
+	}
 	/*이부분은 tmp 파일 비우는 용도*/
 	public static void clean(String dir) {
 		File file = new File(dir);
@@ -135,12 +141,16 @@ public class TinySEBPlusTree implements BPlusTree{
 		return meta_buffer;
 	}
 	
-	
+	public void write() throws IOException {
+		this.writeToTree(this.cur.to_tree_buffer());
+		this.writeToMeta(this.cur.to_meta_buffer());
+	}
 
 	
 
 	@Override
 	public void close() throws IOException {
+		
 		this.tree.close();
 		this.meta.close();
 		this.root = null;
@@ -192,9 +202,7 @@ public class TinySEBPlusTree implements BPlusTree{
 			
 			this.cur.insert(key, val);
 			if(!this.cur.isOver()) {
-				this.writeToTree(this.cur.to_tree_buffer());
-				this.writeToMeta(this.cur.to_meta_buffer());
-				
+				this.write();
 				this.cur = null;
 				this.cache = new ArrayList<>();
 //				this.printallnode();
@@ -211,9 +219,7 @@ public class TinySEBPlusTree implements BPlusTree{
 				this.cur = this.cache.get(cash_index);
 				this.cur.insert(this.piv[0], this.piv[1]);
 				if(!this.cur.isOver()) {
-					this.writeToTree(this.cur.to_tree_buffer());
-					this.writeToMeta(this.cur.to_meta_buffer());
-					
+					this.write();
 					this.cur = null;
 					this.cache = new ArrayList<>();
 //					this.printallnode();
@@ -227,8 +233,7 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.cur = cache.get(0);
 			this.cur.insert(this.piv[0], this.piv[1]);
 			if(!this.cur.isOver()) {
-				this.writeToTree(this.cur.to_tree_buffer());
-				this.writeToMeta(this.cur.to_meta_buffer());
+				this.write();
 				this.writeRootTree(this.cur.to_tree_buffer());
 				this.writeRootMeta(this.cur.to_meta_buffer());
 				
@@ -238,7 +243,7 @@ public class TinySEBPlusTree implements BPlusTree{
 
 				return;
 			}
-			this.height++;
+//			this.height++;
 			this.splitRootNode();
 			this.cache = new ArrayList<>();
 			this.cur = null;
@@ -248,8 +253,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		} else if(this.cur != null) {
 			this.cur.insert(key, val);
 			if(!this.cur.isOver()) {
-				this.writeToTree(this.cur.to_tree_buffer());
-				this.writeToMeta(this.cur.to_meta_buffer());
+				this.write();
 				
 //				System.out.printf("offset(%d) node(%s) : ", this.cur.offset, this.cur.node_size);
 //				this.printarray(this.cur.leaf_to_tree_buffer());
@@ -262,11 +266,10 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.cur = new nonleafNode(this.blocksize, 0, this.offset); //non leaf 
 			this.cur.vals.add(this.offset - 2);
 			this.cur.insert(this.piv[0], this.piv[1]);
-			this.height++;
+//			this.height++;
 			this.root = this.cur.copyNode();
 			
-			this.writeToTree(this.cur.to_tree_buffer());
-			this.writeToMeta(this.cur.to_meta_buffer());
+			this.write();
 			
 //			this.printallnode();
 			this.cur = null;
@@ -276,8 +279,7 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.cur = new leafNode(this.blocksize, 2, this.offset); // leaf
 			this.cur.insert(key, val);
 
-			this.writeToTree(this.cur.to_tree_buffer());
-			this.writeToMeta(this.cur.to_meta_buffer());
+			this.write();
 //			System.out.printf("offset(%d) node(%s) : ", this.cur.offset, this.cur.node_size);
 //			this.printarray(this.cur.leaf_to_tree_buffer());
 
@@ -285,13 +287,185 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 		
 	}
+
+	//node = origin, root = new, leaf = new
+	
+	//node = Origin, newnode = new
+	@Override
+	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
+		String tmpdir = "./tmp/";
+		make_tmp(tmpdir);
+		this.tree = new RandomAccessFile(filepath, "rw");
+		this.meta = new RandomAccessFile(metafile, "rw");
+		int adv = 10;
+		this.blocksize = blocksize/adv;
+		this.nblocks = nblocks;
+		int num_keys = ((blocksize / adv) / Integer.BYTES) / 2;
+		this.fanout = num_keys * 1 / 2 + 1;
+		
+		
+		if(this.tree.length() != 0) {
+			this.meta_buffer = readFromMeta(0);
+			ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
+			this.meta_zero = bf.getInt();
+			this.meta_one = bf.getInt();
+			this.meta_two = bf.getInt();
+			this.tree_buffer = readFromTree(0, this.meta_two);
+			this.root = new nonleafNode(tree_buffer, this.blocksize, this.meta_buffer);
+			this.meta_buffer = null;
+			this.tree_buffer = null;
+		}
+	}
+
+
+	public void splitLeafNode() throws IOException {
+//		this.fanout = this.cur.max_num / 2 + 1;
+		
+		/* cur node 작업
+		 * leaf node이므로 metafile 작업 x*/
+		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+		this.write();
+		
+		
+		this.offset++;
+		this.cur = new leafNode(this.tree_buffer, this.blocksize, 2, this.offset); //leaf node
+		this.write();
+		this.piv[0] = this.cur.keys.get(1);
+		this.piv[1] = this.cur.offset;
+		this.tree_buffer = null;
+	}
+
+	public void splitNonLeafNode() throws IOException{
+		
+//		this.fanout = this.cur.max_num / 2 + 1;
+		/* cur node 작업
+		 * leaf node이므로 metafile 작업 x*/
+		this.piv[0] = this.cur.keys.get(this.fanout);
+		this.piv[1] = this.offset + 1;
+		
+		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+
+		this.write();
+		
+		this.offset++;
+		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
+
+		this.write();
+		this.tree_buffer = null;
+	}
+	
+	
+	public void splitRootNode() throws IOException {
+		this.cur.status = 1;
+		
+//		this.fanout = this.cur.max_num / 2 + 1;
+		/* cur node 작업
+		 * leaf node이므로 metafile 작업 x*/
+		this.piv[0] = this.cur.keys.get(this.fanout);
+		this.piv[1] = this.offset + 1;
+		
+		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+		
+		this.write();
+		
+		int cur_offset = this.cur.offset;
+		this.offset++;
+		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
+		this.write();
+		
+		this.offset++;
+		this.cur = new nonleafNode(this.blocksize, 0, this.offset);
+		this.cur.vals.add(cur_offset);
+		this.cur.insert(this.piv[0], this.piv[1]);
+		this.root = this.cur.copyNode();
+
+		this.write();
+		this.writeRootTree(this.cur.to_tree_buffer());
+		this.writeRootMeta(this.cur.to_meta_buffer());
+		this.tree_buffer = null;
+		
+	}
+
+	//status, offset 순으로 저장함
+	@Override
+	public int search(int key) throws IOException {
+		this.cur = this.root;
+		search_leaf_node_(key);
+		int result = this.cur.get_value(key);
+		this.cur = null;
+		return result;
+		
+	}
+
+	//leaf 찾기
+	public void search_leaf_node_(int key) throws IOException {
+		while(this.cur.status != 2) {
+			this.get_child_(key);
+		}
+	}
+	public void get_child_(int key) throws IOException {
+		int point = this.cur.get_point(key);
+		this.meta_buffer = readFromMeta(point);
+		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
+		this.meta_zero = bf.getInt();
+		this.meta_one = bf.getInt();
+		this.meta_two = bf.getInt();
+		this.tree_buffer = readFromTree(point, this.meta_two);
+		if (this.meta_zero == 1) {
+			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+		} else {
+			this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+		}
+		this.meta_buffer = null;
+		this.tree_buffer = null;
+		
+	}
+	public void search_leaf_node(int key) throws IOException {
+		this.cur = this.root;
+		while(this.cur.status != 2) {
+			get_child(key);
+		}
+	}
+	public void get_child(int key) throws IOException {
+		int point = this.cur.get_point(key);
+		this.meta_buffer = readFromMeta(point);
+		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
+		this.meta_zero = bf.getInt();
+		this.meta_one = bf.getInt();
+		this.meta_two = bf.getInt();
+		this.tree_buffer = readFromTree(point, this.meta_two);
+		if (this.meta_zero == 1) {
+			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+			this.cache.add(new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
+			return;
+		}
+		this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+		this.cache.add(new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
+		
+		
+	}
+
+	public static void printarray(byte[] array) {
+		ByteBuffer bf = ByteBuffer.wrap(array);
+		for(int i=0; i < array.length/4; i++) {
+			System.out.print(bf.getInt()+", ");
+		}
+		System.out.println();
+	}
+	public void printarray() {
+		
+		for(int i : this.cur.to_tree_buffer()) {
+			System.out.print(i+", ");
+		}
+		System.out.println();
+	}
 	public static void main(String[] args) throws IOException {
 		//mvn clean -D test=BPlusTreeTest#bPlusTreeTestWithLargeFile test
 		//mvn clean -D test=BPlusTreeTest#bPlusTreeTest test
 		init();
 		String metapath = "./tmp/bplustree.meta";
 		String savepath = "./tmp/bplustree.tree";
-		String testfile = "/home/hms/Desktop/TinySE-submit/src/test/resources/stage3-500000.data";
+//		String testfile = "/home/hms/Desktop/TinySE-submit/src/test/resources/stage3-500000.data";
 		int nblocks = 32;
 		int blocksize = 32;
 		TinySEBPlusTree tree = new TinySEBPlusTree();
@@ -344,186 +518,6 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		tree.close();
 
-	}
-	//node = origin, root = new, leaf = new
-	
-	//node = Origin, newnode = new
-	@Override
-	public void open(String metafile, String filepath, int blocksize, int nblocks) throws IOException {	
-		String tmpdir = "./tmp/";
-		make_tmp(tmpdir);
-		this.tree = new RandomAccessFile(filepath, "rw");
-		this.meta = new RandomAccessFile(metafile, "rw");
-		this.blocksize = blocksize/10;
-		this.nblocks = nblocks;
-	}
-
-
-	public void splitLeafNode() throws IOException {
-		int fanout = this.cur.max_num / 2 + 1;
-		
-		/* cur node 작업
-		 * leaf node이므로 metafile 작업 x*/
-		this.tree_buffer = this.cur.to_tree_buffer(fanout);
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		
-		
-		this.offset++;
-		this.cur = new leafNode(this.tree_buffer, this.blocksize, 2, this.offset); //leaf node
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		this.piv[0] = this.cur.keys.get(1);
-		this.piv[1] = this.cur.offset;
-		this.tree_buffer = null;
-	}
-
-	public void splitNonLeafNode() throws IOException{
-		
-		int fanout = this.cur.max_num / 2 + 1;
-		/* cur node 작업
-		 * leaf node이므로 metafile 작업 x*/
-		this.piv[0] = this.cur.keys.get(fanout);
-		this.piv[1] = this.offset + 1;
-		
-		this.tree_buffer = this.cur.to_tree_buffer(fanout);
-
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		
-		this.offset++;
-		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
-
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		this.tree_buffer = null;
-	}
-	
-	
-	public void splitRootNode() throws IOException {
-		this.cur.status = 1;
-		
-		int fanout = this.cur.max_num / 2 + 1;
-		/* cur node 작업
-		 * leaf node이므로 metafile 작업 x*/
-		this.piv[0] = this.cur.keys.get(fanout);
-		this.piv[1] = this.offset + 1;
-		
-		this.tree_buffer = this.cur.to_tree_buffer(fanout);
-		
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		
-		int cur_offset = this.cur.offset;
-		this.offset++;
-		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		
-		this.offset++;
-		this.cur = new nonleafNode(this.blocksize, 0, this.offset);
-		this.cur.vals.add(cur_offset);
-		this.cur.insert(this.piv[0], this.piv[1]);
-		this.root = this.cur.copyNode();
-
-		this.writeToTree(this.cur.to_tree_buffer());
-		this.writeToMeta(this.cur.to_meta_buffer());
-		this.writeRootTree(this.cur.to_tree_buffer());
-		this.writeRootMeta(this.cur.to_meta_buffer());
-		this.tree_buffer = null;
-		
-	}
-
-	//status, offset 순으로 저장함
-	@Override
-	public int search(int key) throws IOException {
-		if(this.root != null) {
-			this.cur = this.root;
-			search_leaf_node_(key);
-			int result = this.cur.get_value(key);
-			this.cur = null;
-			return result;
-		}
-		this.meta_buffer = readFromMeta(0);
-		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
-		int zero = bf.getInt();
-		int one = bf.getInt();
-		int two = bf.getInt();
-		this.tree_buffer = readFromTree(0, two);
-		this.root = new nonleafNode(tree_buffer, this.blocksize, this.meta_buffer);
-		meta_buffer = null;
-		this.tree_buffer = null;
-		
-		this.cur = this.root;
-		search_leaf_node_(key);
-		int result = this.cur.get_value(key);
-		this.cur = null;
-		return result;
-		
-		
-	}
-
-	//leaf 찾기
-	public void search_leaf_node_(int key) throws IOException {
-		while(this.cur.status != 2) {
-			this.get_child_(key);
-		}
-	}
-	public void get_child_(int key) throws IOException {
-		int point = this.cur.get_point(key);
-		this.meta_buffer = readFromMeta(point);
-		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
-		int zero = bf.getInt();
-		int one = bf.getInt();
-		int two = bf.getInt();
-		this.tree_buffer = readFromTree(point, two);
-		if (zero == 1) {
-			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-		} else {
-			this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-		}
-		this.meta_buffer = null;
-		this.tree_buffer = null;
-		
-	}
-	public void search_leaf_node(int key) throws IOException {
-		this.cur = this.root;
-		while(this.cur.status != 2) {
-			get_child(key);
-		}
-	}
-	public void get_child(int key) throws IOException {
-		int point = this.cur.get_point(key);
-		this.meta_buffer = readFromMeta(point);
-		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
-		int zero = bf.getInt();
-		int one = bf.getInt();
-		int two = bf.getInt();
-		this.tree_buffer = readFromTree(point, two);
-		if (zero == 1) {
-			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-			this.cache.add(new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
-			return;
-		}
-		this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-		this.cache.add(new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
-		
-		
-	}
-
-	public static void printarray(byte[] array) {
-		ByteBuffer bf = ByteBuffer.wrap(array);
-		for(int i=0; i < array.length/4; i++) {
-			System.out.print(bf.getInt()+", ");
-		}
-		System.out.println();
-	}
-	public void printarray() {
-		
-		for(int i : this.cur.to_tree_buffer()) {
-			System.out.print(i+", ");
-		}
-		System.out.println();
 	}
 }
 
