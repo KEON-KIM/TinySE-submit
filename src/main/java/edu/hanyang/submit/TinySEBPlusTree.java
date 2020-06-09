@@ -10,9 +10,9 @@ import java.util.*;
 
 public class TinySEBPlusTree implements BPlusTree{
 	final static int metasize = 12;
-	int blocksize;
-	int nblocks;
-	int fanout;
+	static int blocksize;
+	static int nblocks;
+	static int fanout;
 	int meta_zero;
 	int meta_one;
 	int meta_two;
@@ -24,7 +24,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	Node cur;
 	Node root;
 	int offset=1;
-	List<Node> cache = new ArrayList<>(this.nblocks);
+	List<Node> cache = new ArrayList<>(TinySEBPlusTree.nblocks);
 
 	int[] piv = new int[2];
 	byte[] tree_buffer;
@@ -113,7 +113,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	
 	public void writeToTree(byte[] tree_buffer)
 			throws IOException{
-		this.tree.seek(this.cur.offset*this.blocksize);
+		this.tree.seek(this.cur.offset*TinySEBPlusTree.blocksize);
 		this.tree.write(tree_buffer);
 	}
 	public void writeToMeta(byte[] meta_buffer)
@@ -126,7 +126,7 @@ public class TinySEBPlusTree implements BPlusTree{
 	public byte[] readFromTree(int position, int node_size)
 		throws IOException {
 		byte[] tree_buffer = new byte[node_size*4];
-		this.tree.seek(position * this.blocksize);
+		this.tree.seek(position * TinySEBPlusTree.blocksize);
 		this.tree.read(tree_buffer);
 		return tree_buffer;
 	}
@@ -166,12 +166,12 @@ public class TinySEBPlusTree implements BPlusTree{
 			byte[] tree_buffer = readFromTree(i, meta_buffer[11]);
 			Node node;
 			if(meta_buffer[3] == 2) {
-				node = new leafNode(tree_buffer, this.blocksize, meta_buffer);
+				node = new leafNode(tree_buffer, TinySEBPlusTree.blocksize, meta_buffer);
 				node.set_node_size();
 				System.out.printf("offset(%d) node(%d) : ", i, node.node_size);
 				printarray(node.to_tree_buffer());
 			} else {
-				node = new nonleafNode(tree_buffer, this.blocksize, meta_buffer);
+				node = new nonleafNode(tree_buffer, TinySEBPlusTree.blocksize, meta_buffer);
 				node.set_node_size();
 				System.out.printf("offset(%d) node(%d) : ", i, node.node_size);
 				printarray(node.to_tree_buffer());
@@ -250,7 +250,7 @@ public class TinySEBPlusTree implements BPlusTree{
 //			this.printallnode();
 
 			return;
-		} else if(this.cur != null) {
+		} else {
 			this.cur.insert(key, val);
 			if(!this.cur.isOver()) {
 				this.write();
@@ -263,7 +263,7 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.splitLeafNode();
 			
 			this.offset++;
-			this.cur = new nonleafNode(this.blocksize, 0, this.offset); //non leaf 
+			this.cur = new nonleafNode(TinySEBPlusTree.blocksize, 0, this.offset); //non leaf 
 			this.cur.vals.add(this.offset - 2);
 			this.cur.insert(this.piv[0], this.piv[1]);
 //			this.height++;
@@ -273,15 +273,6 @@ public class TinySEBPlusTree implements BPlusTree{
 			
 //			this.printallnode();
 			this.cur = null;
-
-			return;
-		} else {
-			this.cur = new leafNode(this.blocksize, 2, this.offset); // leaf
-			this.cur.insert(key, val);
-
-			this.write();
-//			System.out.printf("offset(%d) node(%s) : ", this.cur.offset, this.cur.node_size);
-//			this.printarray(this.cur.leaf_to_tree_buffer());
 
 			return;
 		}
@@ -298,10 +289,10 @@ public class TinySEBPlusTree implements BPlusTree{
 		this.tree = new RandomAccessFile(filepath, "rw");
 		this.meta = new RandomAccessFile(metafile, "rw");
 		int adv = 10;
-		this.blocksize = blocksize/adv;
-		this.nblocks = nblocks;
+		TinySEBPlusTree.blocksize = blocksize/adv;
+		TinySEBPlusTree.nblocks = nblocks;
 		int num_keys = ((blocksize / adv) / Integer.BYTES) / 2;
-		this.fanout = num_keys * 1 / 2 + 1;
+		TinySEBPlusTree.fanout = num_keys * 1 / 2 + 1;
 		
 		
 		if(this.tree.length() != 0) {
@@ -311,9 +302,11 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.meta_one = bf.getInt();
 			this.meta_two = bf.getInt();
 			this.tree_buffer = readFromTree(0, this.meta_two);
-			this.root = new nonleafNode(tree_buffer, this.blocksize, this.meta_buffer);
+			this.root = new nonleafNode(tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer);
 			this.meta_buffer = null;
 			this.tree_buffer = null;
+		} else {
+			this.cur = new leafNode(TinySEBPlusTree.blocksize, 2, this.offset);
 		}
 	}
 
@@ -323,12 +316,12 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		/* cur node 작업
 		 * leaf node이므로 metafile 작업 x*/
-		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+		this.tree_buffer = this.cur.to_tree_buffer(TinySEBPlusTree.fanout);
 		this.write();
 		
 		
 		this.offset++;
-		this.cur = new leafNode(this.tree_buffer, this.blocksize, 2, this.offset); //leaf node
+		this.cur = new leafNode(this.tree_buffer, TinySEBPlusTree.blocksize, 2, this.offset); //leaf node
 		this.write();
 		this.piv[0] = this.cur.keys.get(1);
 		this.piv[1] = this.cur.offset;
@@ -340,15 +333,15 @@ public class TinySEBPlusTree implements BPlusTree{
 //		this.fanout = this.cur.max_num / 2 + 1;
 		/* cur node 작업
 		 * leaf node이므로 metafile 작업 x*/
-		this.piv[0] = this.cur.keys.get(this.fanout);
+		this.piv[0] = this.cur.keys.get(TinySEBPlusTree.fanout);
 		this.piv[1] = this.offset + 1;
 		
-		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+		this.tree_buffer = this.cur.to_tree_buffer(TinySEBPlusTree.fanout);
 
 		this.write();
 		
 		this.offset++;
-		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
+		this.cur = new nonleafNode(this.tree_buffer, TinySEBPlusTree.blocksize, 1, this.offset);
 
 		this.write();
 		this.tree_buffer = null;
@@ -361,20 +354,20 @@ public class TinySEBPlusTree implements BPlusTree{
 //		this.fanout = this.cur.max_num / 2 + 1;
 		/* cur node 작업
 		 * leaf node이므로 metafile 작업 x*/
-		this.piv[0] = this.cur.keys.get(this.fanout);
+		this.piv[0] = this.cur.keys.get(TinySEBPlusTree.fanout);
 		this.piv[1] = this.offset + 1;
 		
-		this.tree_buffer = this.cur.to_tree_buffer(this.fanout);
+		this.tree_buffer = this.cur.to_tree_buffer(TinySEBPlusTree.fanout);
 		
 		this.write();
 		
 		int cur_offset = this.cur.offset;
 		this.offset++;
-		this.cur = new nonleafNode(this.tree_buffer, this.blocksize, 1, this.offset);
+		this.cur = new nonleafNode(this.tree_buffer, TinySEBPlusTree.blocksize, 1, this.offset);
 		this.write();
 		
 		this.offset++;
-		this.cur = new nonleafNode(this.blocksize, 0, this.offset);
+		this.cur = new nonleafNode(TinySEBPlusTree.blocksize, 0, this.offset);
 		this.cur.vals.add(cur_offset);
 		this.cur.insert(this.piv[0], this.piv[1]);
 		this.root = this.cur.copyNode();
@@ -404,7 +397,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 	}
 	public void get_child_(int key) throws IOException {
-		int point = this.cur.get_point(key);
+		int point = this.cur.get_value(key);
 		this.meta_buffer = readFromMeta(point);
 		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
 		this.meta_zero = bf.getInt();
@@ -412,9 +405,9 @@ public class TinySEBPlusTree implements BPlusTree{
 		this.meta_two = bf.getInt();
 		this.tree_buffer = readFromTree(point, this.meta_two);
 		if (this.meta_zero == 1) {
-			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+			this.cur = new nonleafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer);
 		} else {
-			this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
+			this.cur = new leafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer);
 		}
 		this.meta_buffer = null;
 		this.tree_buffer = null;
@@ -427,7 +420,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 	}
 	public void get_child(int key) throws IOException {
-		int point = this.cur.get_point(key);
+		int point = this.cur.get_value(key);
 		this.meta_buffer = readFromMeta(point);
 		ByteBuffer bf = ByteBuffer.wrap(this.meta_buffer);
 		this.meta_zero = bf.getInt();
@@ -435,12 +428,12 @@ public class TinySEBPlusTree implements BPlusTree{
 		this.meta_two = bf.getInt();
 		this.tree_buffer = readFromTree(point, this.meta_two);
 		if (this.meta_zero == 1) {
-			this.cur = new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-			this.cache.add(new nonleafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
+			this.cur = new nonleafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer);
+			this.cache.add(new nonleafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer));
 			return;
 		}
-		this.cur = new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer);
-		this.cache.add(new leafNode(this.tree_buffer, this.blocksize, this.meta_buffer));
+		this.cur = new leafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer);
+		this.cache.add(new leafNode(this.tree_buffer, TinySEBPlusTree.blocksize, this.meta_buffer));
 		
 		
 	}

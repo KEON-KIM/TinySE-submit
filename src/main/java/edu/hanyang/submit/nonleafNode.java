@@ -97,4 +97,18 @@ public class nonleafNode extends Node{
 	public Node copyNode(){
 		return new nonleafNode(this.to_tree_buffer(), this.blocksize, this.to_meta_buffer());
 	}
+	
+	public int get_value(int key){ 
+		int low = 0;
+        int high = this.keys.size();
+        while (low < high) {
+            final int mid = low + (high - low)/2;
+            if (key >= this.keys.get(mid)) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+        return this.vals.get(low - 1);
+	}
 }

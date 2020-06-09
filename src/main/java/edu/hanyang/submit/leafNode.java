@@ -90,4 +90,19 @@ public class leafNode extends Node {
 	public Node copyNode(){
 		return new leafNode(this.to_tree_buffer(), this.blocksize, this.to_meta_buffer());
 	}
+	public int get_value(int key) {
+        int low = 0;
+        int high = this.keys.size() - 1;
+        while (low <= high) {
+            int mid = low + (high - low)/2; // mid 값을 계산.
+            if (key > this.keys.get(mid)) // 키값이 더 크면 왼쪽을 버린다.
+                low = mid + 1;
+            else if (key < this.keys.get(mid)) // 키값이 더 작으면 오른쪽을 버린다.
+                high = mid - 1;
+            else
+                return this.vals.get(mid - 1); // key found
+        }
+        return -1;  // key not found
+		
+	}
 }
