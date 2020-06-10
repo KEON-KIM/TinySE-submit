@@ -231,7 +231,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		make_tmp(tmpdir);
 		TinySEBPlusTree.tree = new RandomAccessFile(filepath, "rw");
 		TinySEBPlusTree.meta = new RandomAccessFile(metafile, "rw");
-		int adv = 1;
+		int adv = 10;
 		TinySEBPlusTree.blocksize = blocksize/adv;
 		TinySEBPlusTree.nblocks = nblocks;
 		int num_keys = (TinySEBPlusTree.blocksize / Integer.BYTES) / 2;
