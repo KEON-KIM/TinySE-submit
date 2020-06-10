@@ -1,80 +1,89 @@
 package edu.hanyang.submit;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class LRUCache {
-	private Map<Integer, node> nodeMap;
+	private Map<Integer, Data> DataMap;
 	private int capacity;
-	private node head;
-	private node tail;
+	private Data head;
+	private Data tail;
 
-	private class node {
+	private class Data {
 		private int key;
-		private int value;
-		private node prev;
-		private node next;
+		private Node node;
+		private Data prev;
+		private Data next;
 
-		public node(int key, int value) {
+		public Data(int key, Node node) {
 			this.key = key;
-			this.value = value;
+			this.node = node;
 			this.next = null;
 			this.prev = null;
 		}
 	}
 
 	public LRUCache(int capacity) {
-		this.nodeMap = new HashMap<>();
+		this.DataMap = new HashMap<>();
 		this.capacity = capacity;
-		head = new node(0, 0);
-		tail = new node(0, 0);
+		head = new Data(0, null);
+		tail = new Data(0, null);
 		head.next = tail;
 		tail.prev = head;
 
 	}
 
 	//시간 복잡도 O(1)
-	private void remove(node node) {
-		node.prev.next = node.next;
-		node.next.prev = node.prev;
+	private void remove(Data Data) {
+		Data.prev.next = Data.next;
+		Data.next.prev = Data.prev;
 
-		nodeMap.remove(node.key);
+		DataMap.remove(Data.key);
 	}
 
 	//시간 복잡도 O(1)
-	private void insertToHead(node node) {
-		this.head.next.prev = node;
-		node.next = this.head.next;
-		node.prev = this.head;
-		this.head.next = node;
+	private void insertToHead(Data Data) {
+		this.head.next.prev = Data;
+		Data.next = this.head.next;
+		Data.prev = this.head;
+		this.head.next = Data;
 
-		nodeMap.put(node.key, node);
+		DataMap.put(Data.key, Data);
 	}
 
 	//시간 복잡도 O(1)
-	public int get(int key) {
-		if (!nodeMap.containsKey(key))
-			return -1;
-		node getNode = nodeMap.get(key);
-		remove(getNode);
-		insertToHead(getNode);
-		return getNode.value;
-
+	public Node get(int key) throws IOException {
+		if (DataMap.containsKey(key)) {
+			Data getNode = DataMap.get(key);
+			remove(getNode);
+			insertToHead(getNode);
+			return getNode.node;
+		}
+		//cache에 key가 없다멵 기존에있던 file에서 읽어들이기
+		if(DataMap.size() >= this.capacity) {
+			Data delData = tail.prev;
+			remove(delData);
+		}
+		Node node = TinySEBPlusTree.readFile(key);
+		Data newData = new Data(node.offset, node);
+		insertToHead(newData);
+		return node;
 	}
 
 	//시간 복잡도 O(1)
-	public void put(int key, int value) {
-		node newNode = new node(key, value);
-		if (nodeMap.containsKey(key)) {
-			node oldNode = nodeMap.get(key);
-			remove(oldNode);
+	public void put(int key, Node node) throws IOException {
+		Data newData = new Data(key, node);
+		if (DataMap.containsKey(key)) {
+			Data oldData = DataMap.get(key);
+			remove(oldData);
 		} else {
-			if (nodeMap.size() >= this.capacity) {
-				node delNode = tail.prev;
-				remove(delNode);
+			if (DataMap.size() >= this.capacity) {
+				Data delData = tail.prev;
+				remove(delData);
 			}
 		}
-		insertToHead(newNode);
+		insertToHead(newData);
+		TinySEBPlusTree.writeFile(newData.node);
 	}
-
 }
