@@ -36,10 +36,18 @@ public class LRUCache {
 
 	//시간 복잡도 O(1)
 	private void remove(Data Data) {
-		Data.prev.next = Data.next;
-		Data.next.prev = Data.prev;
-
-		DataMap.remove(Data.key);
+		if(Data.prev != null){
+			Data.prev.next = Data.next;
+        }
+        else{
+            head = Data.next;
+        }
+        if(Data.next != null){
+        	Data.next.prev = Data.prev;
+        }
+        else{
+            tail = Data.prev;
+        }
 	}
 
 	//시간 복잡도 O(1)
@@ -50,6 +58,15 @@ public class LRUCache {
 		this.head.next = Data;
 
 		DataMap.put(Data.key, Data);
+//		Data.next = head;
+//		Data.prev = null;
+//        if(head != null) {
+//            head.prev = Data;
+//        }
+//        head = Data;
+//        if(tail == null){
+//            tail = head;
+//        }
 	}
 
 	//시간 복잡도 O(1)
@@ -61,10 +78,6 @@ public class LRUCache {
 			return getNode.node;
 		}
 		//cache에 key가 없다멵 기존에있던 file에서 읽어들이기
-		if(DataMap.size() >= this.capacity) {
-			Data delData = tail.prev;
-			remove(delData);
-		}
 		Node node = TinySEBPlusTree.readFile(key);
 		Data newData = new Data(node.offset, node);
 		insertToHead(newData);
