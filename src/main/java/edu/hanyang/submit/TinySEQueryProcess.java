@@ -20,7 +20,6 @@ public class TinySEQueryProcess implements QueryProcess {
 			throws IOException {
 		// TODO Auto-generated method stub
 		while(!op1.is_eol() && !op2.is_eol()) {
-//			System.out.println("??");
 			if(op1.get_docid() < op2.get_docid()) {
 				op1.go_next();
 			}
@@ -55,7 +54,6 @@ public class TinySEQueryProcess implements QueryProcess {
 	@Override
 	public void op_and_wo_pos(DocumentCursor op1, DocumentCursor op2, IntermediateList out) throws IOException {
 		// TODO Auto-generated method stub
-//		out = null ;
 		while(!op1.is_eol() && !op2.is_eol()) {
 			if(op1.get_docid() < op2.get_docid()) {
 				op1.go_next();
