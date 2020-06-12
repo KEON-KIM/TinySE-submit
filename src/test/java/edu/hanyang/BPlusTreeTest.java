@@ -112,12 +112,12 @@ public class BPlusTreeTest {
 		long startTime = System.currentTimeMillis();
 		int mb = 1024*1024;
 		Runtime runtime = Runtime.getRuntime();
-		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-15000000.data").getFile())))) {
+		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-500000.data").getFile())))) {
 			while (in.available() > 0) {
 				int termid = in.readInt();
 				int addr = in.readInt();
 				tree.insert(termid, addr);
-//			System.out.println((runtime.totalMemory() - runtime.freeMemory()) / mb);
+	//		System.out.println((runtime.totalMemory() - runtime.freeMemory()) / mb);
 			}
 		} catch (IOException exc) {
 			exc.printStackTrace();
@@ -135,7 +135,7 @@ public class BPlusTreeTest {
 		startTime = System.currentTimeMillis();
 
 		runtime = Runtime.getRuntime();
-		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-15000000.data").getFile())))) {
+		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(this.getClass().getClassLoader().getResource("stage3-500000.data").getFile())))) {
 			while (in.available() > 0) {
 				int termid = in.readInt();
 				int addr = in.readInt();

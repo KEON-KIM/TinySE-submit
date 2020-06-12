@@ -4,27 +4,26 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class nonleafNode extends Node{
-	nonleafNode(byte[] tree_buffer, int blocksize, byte[] meta_buffer) {
+	nonleafNode(ByteBuffer tree_buffer, int blocksize, ByteBuffer meta_buffer) {
 		this.max_num = (blocksize / Integer.BYTES) / 2;
 		
 		this.keys = new ArrayList<>(this.max_num);
 		this.keys.add(-1);
 		this.vals = new ArrayList<>(this.max_num);
 		
-		bf = ByteBuffer.wrap(meta_buffer);
-		this.status = bf.getInt();
-		this.offset = bf.getInt();
-		bf.clear();
-		bf = ByteBuffer.wrap(tree_buffer);
+		
+		this.status = meta_buffer.getInt();
+		this.offset = meta_buffer.getInt();
 		int i;
-		for(i = 0; i < tree_buffer.length/8; i++) {
-			this.vals.add(bf.getInt());
-			this.keys.add(bf.getInt());
+		for(i = 0; i < tree_buffer.capacity()/8; i++) {
+			this.vals.add(tree_buffer.getInt());
+			this.keys.add(tree_buffer.getInt());
 		}	
-		this.vals.add(bf.getInt());
-		bf.clear();
+		this.vals.add(tree_buffer.getInt());
+		meta_buffer.clear();
+		tree_buffer.clear();
 	}
-	nonleafNode(byte[] tree_buffer, int blocksize, int status, int offset) {
+	nonleafNode(ByteBuffer tree_buffer, int blocksize, int status, int offset) {
 		this.max_num = (blocksize / Integer.BYTES) / 2;
 		this.blocksize = blocksize;
 		this.keys = new ArrayList<>(this.max_num);
@@ -33,14 +32,13 @@ public class nonleafNode extends Node{
 		
 		this.status = status;
 		this.offset = offset;
-		bf = ByteBuffer.wrap(tree_buffer);
 		int i;
-		for(i = 0; i < tree_buffer.length/8; i++) {
-			this.vals.add(bf.getInt());
-			this.keys.add(bf.getInt());
+		for(i = 0; i < tree_buffer.capacity()/8; i++) {
+			this.vals.add(tree_buffer.getInt());
+			this.keys.add(tree_buffer.getInt());
 		}	
-		this.vals.add(bf.getInt());
-		bf.clear();
+		this.vals.add(tree_buffer.getInt());
+		tree_buffer.clear();
 	}
 	
 	nonleafNode(int blocksize, int status, int offset) {
@@ -68,31 +66,32 @@ public class nonleafNode extends Node{
         this.vals.add(low, val);
         this.keys.add(low, key);
 	}
-	public byte[] to_tree_buffer(){
+	public ByteBuffer to_tree_buffer(){
 		this.set_node_size();
-		byte[] buffer = new byte[this.node_size*4];
+		ByteBuffer bf = ByteBuffer.wrap(new byte[this.node_size*4]);
 		int i;
 		for(i = 0; i < this.node_size / 2; i++) {
-			intTobyte(buffer, this.vals.get(i), i*8);
-			intTobyte(buffer, this.keys.get(i+1), 4+i*8);
+			bf.putInt(this.vals.get(i));
+			bf.putInt(this.keys.get(i+1));
 		}
-		this.intTobyte(buffer, this.vals.get(i), i*8);
-		return buffer;
+		bf.putInt(this.vals.get(i));
+		bf.clear();
+		return bf;
 	}
-	public byte[] to_tree_buffer(int index){
+	public ByteBuffer to_tree_buffer(int index){
 		this.node_size = 2*index -1;
 		int num_buffer = this.keys.size() -1 + this.vals.size() - this.node_size - 1;
-		byte[] buffer = new byte[num_buffer*4];
+		ByteBuffer bf = ByteBuffer.wrap(new byte[num_buffer*4]);
 		int i;
 		for(i = 0; i < num_buffer / 2 ; i++) {
-			intTobyte(buffer, this.vals.get(index+i), i*8);
-			intTobyte(buffer, this.keys.get(index+1+i), 4+i*8);	
+			bf.putInt(this.vals.get(index+i));
+			bf.putInt(this.keys.get(index+1+i));	
 		}
-		intTobyte(buffer, this.vals.get(index+i), i*8);
+		bf.putInt(this.vals.get(index+i));
 		this.keys = this.keys.subList(0, index);
 		this.vals = this.vals.subList(0, index);
-		
-		return buffer;
+		bf.clear();
+		return bf;
 		
 	}
 	public Node copyNode(){

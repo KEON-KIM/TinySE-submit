@@ -22,11 +22,10 @@ public class TinySEBPlusTree implements BPlusTree{
 	Node root;
 	int offset=1;
 	Stack<Node> pedigree = new Stack<>();
-	static LRUCache cache;
 
 	static int[] piv;
-	static byte[] tree_buffer;
-	static byte[] meta_buffer;
+	static ByteBuffer tree_buffer;
+	static ByteBuffer meta_buffer;
 	
 	public void printoffset() {
 		System.out.println("offset : " + this.offset);
@@ -71,8 +70,8 @@ public class TinySEBPlusTree implements BPlusTree{
 	}
 	public static void writeFile(Node node)
 			throws IOException{
-		byte[] tree_buffer = node.to_tree_buffer();
-		byte[] meta_buffer = node.to_meta_buffer();
+		byte[] tree_buffer = node.to_tree_buffer().array();
+		byte[] meta_buffer = node.to_meta_buffer().array();
 		int offset = node.offset;
 		
 		TinySEBPlusTree.tree.seek(offset*TinySEBPlusTree.blocksize);
@@ -86,8 +85,6 @@ public class TinySEBPlusTree implements BPlusTree{
 			TinySEBPlusTree.meta.seek(0);
 			TinySEBPlusTree.meta.write(meta_buffer);
 		}
-		tree_buffer = null;
-		meta_buffer = null;
 	}
 	
 	/* size : stored node의 사이즈 */
@@ -95,19 +92,19 @@ public class TinySEBPlusTree implements BPlusTree{
 		byte[] buffer = new byte[TinySEBPlusTree.metasize];
 		TinySEBPlusTree.meta.seek(position*TinySEBPlusTree.metasize);
 		TinySEBPlusTree.meta.read(buffer);
-		Node.bf = ByteBuffer.wrap(buffer);
-		int meta_zero = Node.bf.getInt();
-		int meta_one = Node.bf.getInt();
-		int meta_two = Node.bf.getInt();
-		Node.bf.clear();
+		ByteBuffer bf = ByteBuffer.wrap(buffer);
+		int meta_zero = bf.getInt();
+		int meta_one = bf.getInt();
+		int meta_two = bf.getInt();
+		bf.clear();
 		buffer = new byte[meta_two*4];
 		TinySEBPlusTree.tree.seek(position * TinySEBPlusTree.blocksize);
 		TinySEBPlusTree.tree.read(buffer);
-		
+		bf = ByteBuffer.wrap(buffer);
 		if(meta_zero == 2) {
-			return new leafNode(buffer, TinySEBPlusTree.blocksize, meta_zero, meta_one);
+			return new leafNode(bf, TinySEBPlusTree.blocksize, meta_zero, meta_one);
 		}else {
-			return new nonleafNode(buffer, TinySEBPlusTree.blocksize, meta_zero, meta_one);
+			return new nonleafNode(bf, TinySEBPlusTree.blocksize, meta_zero, meta_one);
 		}
 	}
 	
@@ -118,7 +115,6 @@ public class TinySEBPlusTree implements BPlusTree{
 
 	@Override
 	public void close() throws IOException {
-		cache = null;
 		pedigree.clear();
 		TinySEBPlusTree.tree.close();
 		TinySEBPlusTree.meta.close();
@@ -134,7 +130,7 @@ public class TinySEBPlusTree implements BPlusTree{
 			node = TinySEBPlusTree.readFile(i);
 			node.set_node_size();
 			System.out.printf("offset(%d) node(%d) : ", i, node.node_size);
-			printarray(node.to_tree_buffer());
+			printarray(node.to_tree_buffer().array());
 			
 		}
 	}
@@ -151,6 +147,8 @@ public class TinySEBPlusTree implements BPlusTree{
 //				cache.put(this.cur.offset, this.cur);
 				writeFile(this.cur);
 				this.pedigree.clear();
+				this.cur.keys.clear();
+				this.cur.vals.clear();
 //				this.printallnode();
 				return;
 			}
@@ -163,6 +161,8 @@ public class TinySEBPlusTree implements BPlusTree{
 //					cache.put(this.cur.offset, this.cur);
 					writeFile(this.cur);
 					this.pedigree.clear();
+					this.cur.keys.clear();
+					this.cur.vals.clear();
 //					this.printallnode();
 					return;
 				}
@@ -181,7 +181,6 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.splitRootNode();
 			this.pedigree.clear();
 //			this.printallnode();
-
 			return;
 		} else {
 			this.cur.insert(key, val);
@@ -201,6 +200,8 @@ public class TinySEBPlusTree implements BPlusTree{
 			this.root = this.cur.copyNode();		
 //			cache.put(this.cur.offset, this.cur);
 			writeFile(this.cur);
+			this.cur.keys.clear();
+			this.cur.vals.clear();
 //			this.printallnode();
 			return;
 		}
@@ -216,15 +217,17 @@ public class TinySEBPlusTree implements BPlusTree{
 		make_tmp(tmpdir);
 		TinySEBPlusTree.tree = new RandomAccessFile(filepath, "rw");
 		TinySEBPlusTree.meta = new RandomAccessFile(metafile, "rw");
-		
-		int adv = 10;
+		int adv;
+		if(blocksize > 32) {
+			adv = 10;
+		} else {
+			adv = 1;
+		}
 		TinySEBPlusTree.blocksize = blocksize/adv;
 		TinySEBPlusTree.nblocks = nblocks;
 		/*fanout setting*/
 		int num_keys = (TinySEBPlusTree.blocksize / Integer.BYTES) / 2;
 		TinySEBPlusTree.fanout = num_keys * 1 / 2 + 1;
-		
-		cache = new LRUCache(nblocks);
 		piv = new int[2];
 		if(TinySEBPlusTree.tree.length() != 0) {
 			this.root = TinySEBPlusTree.readFile(0);
@@ -244,6 +247,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		
 		this.offset++;
 		this.cur = new leafNode(TinySEBPlusTree.tree_buffer, TinySEBPlusTree.blocksize, 2, this.offset); //leaf node
+		TinySEBPlusTree.tree_buffer.clear();
 //		cache.put(this.cur.offset, this.cur.copyNode());
 		writeFile(this.cur);
 		piv[0] = this.cur.keys.get(1);
@@ -258,6 +262,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		writeFile(this.cur);
 		this.offset++;
 		this.cur = new nonleafNode(TinySEBPlusTree.tree_buffer, TinySEBPlusTree.blocksize, 1, this.offset);
+		TinySEBPlusTree.tree_buffer.clear();
 //		cache.put(this.cur.offset, this.cur.copyNode());
 		writeFile(this.cur);
 	}
@@ -276,6 +281,7 @@ public class TinySEBPlusTree implements BPlusTree{
 		int cur_offset = this.cur.offset;
 		this.offset++;
 		this.cur = new nonleafNode(TinySEBPlusTree.tree_buffer, TinySEBPlusTree.blocksize, 1, this.offset);
+		TinySEBPlusTree.tree_buffer.clear();
 //		cache.put(this.cur.offset, this.cur.copyNode());
 		writeFile(this.cur);
 		
@@ -334,13 +340,13 @@ public class TinySEBPlusTree implements BPlusTree{
 		}
 		System.out.println();
 	}
-	public void printarray() {
-		
-		for(int i : this.cur.to_tree_buffer()) {
-			System.out.print(i+", ");
-		}
-		System.out.println();
-	}
+//	public void printarray() {
+//		
+//		for(int i : this.cur.to_tree_buffer().array()) {
+//			System.out.print(i+", ");
+//		}
+//		System.out.println();
+//	}
 	public static void main(String[] args) throws IOException {
 		//mvn clean -D test=BPlusTreeTest#bPlusTreeTestWithLargeFile test
 		//mvn clean -D test=BPlusTreeTest#bPlusTreeTest test
@@ -399,7 +405,6 @@ public class TinySEBPlusTree implements BPlusTree{
 	
 		
 		tree.close();
-
 	}
 }
 
